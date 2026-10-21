@@ -68,6 +68,8 @@ public final class DesktopLayout {
         public String id = UUID.randomUUID().toString();
         public String type = "";
         public String titleKey = "";
+        /** Literal custom title set by the player (empty = use the window type's default title). */
+        public String title = "";
         public int x;
         public int y;
         public int width;

@@ -39,7 +39,7 @@ public final class HuiWindowTypes {
     private static final Map<Identifier, WindowType> TYPES = new LinkedHashMap<>();
 
     static {
-        register(new WindowType(INVENTORY, "hui.window.inventory", () -> {
+        register(WindowType.translatable(INVENTORY, "hui.window.inventory", () -> {
             Player player = Minecraft.getInstance().player;
             if (player == null) {
                 return unavailable();
@@ -49,7 +49,7 @@ public final class HuiWindowTypes {
             }
             return EmbeddedScreenContent.survival(player);
         }));
-        register(new WindowType(CREATIVE, "hui.window.creative_inventory", () -> {
+        register(WindowType.translatable(CREATIVE, "hui.window.creative_inventory", () -> {
             LocalPlayer player = Minecraft.getInstance().player;
             if (player == null) {
                 return unavailable();
@@ -59,7 +59,7 @@ public final class HuiWindowTypes {
             }
             return EmbeddedScreenContent.creative(player);
         }));
-        register(new WindowType(DEFAULT_INVENTORY, "hui.window.default_inventory", () -> {
+        register(WindowType.translatable(DEFAULT_INVENTORY, "hui.window.default_inventory", () -> {
             Player player = Minecraft.getInstance().player;
             if (player == null) {
                 return unavailable();
@@ -69,8 +69,18 @@ public final class HuiWindowTypes {
             }
             return EmbeddedScreenContent.croppedInventory(player);
         }));
-        register(new WindowType(DEMO, "hui.window.demo", TextWindowContent::demo));
-        register(new WindowType(PROPERTIES, "hui.window.properties",
+        register(WindowType.translatable(DEMO, "hui.window.demo", () -> {
+            com.chai.hui.client.windowing.ui.PanelWidget root = com.chai.hui.client.windowing.ui.Ui.column()
+                    .padding(6).gap(4)
+                    .child(com.chai.hui.client.windowing.ui.Ui.label(() -> Component.translatable("hui.demo.line1")))
+                    .child(com.chai.hui.client.windowing.ui.Ui.mutedLabel(
+                            () -> Component.translatable("hui.demo.line2")))
+                    .child(com.chai.hui.client.windowing.ui.Ui.label(
+                            () -> Component.translatable("hui.demo.input_label")))
+                    .child(com.chai.hui.client.windowing.ui.Ui.textInput("", 24, value -> {}, () -> {}));
+            return new com.chai.hui.client.windowing.ui.UiPanelContent(root);
+        }));
+        register(WindowType.translatable(PROPERTIES, "hui.window.properties",
                 () -> new TextWindowContent(List.of(Component.translatable("hui.window.properties_lost")), 200, 24)));
     }
 

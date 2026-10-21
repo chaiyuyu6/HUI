@@ -8,6 +8,10 @@ import com.chai.hui.HuiMod;
 import com.chai.hui.client.screen.HuiConfigScreen;
 import com.chai.hui.client.screen.HuiScreens;
 import com.chai.hui.client.ui.ContextMenu;
+import com.chai.hui.client.windowing.ui.PanelWidget;
+import com.chai.hui.client.windowing.ui.TextInputWidget;
+import com.chai.hui.client.windowing.ui.Ui;
+import com.chai.hui.client.windowing.ui.UiPanelContent;
 import com.chai.hui.network.CloseMenuPayload;
 import com.mojang.blaze3d.platform.InputConstants;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
@@ -255,9 +259,14 @@ public final class HuiDesktopScreen extends Screen {
             HuiMod.LOGGER.warn("Skipping window of unknown type {}", typeId);
             return null;
         }
-        Component title = stored.titleKey.isEmpty()
-                ? Component.translatable(type.titleKey())
-                : Component.translatable(stored.titleKey);
+        Component title;
+        if (!stored.title.isEmpty()) {
+            title = Component.literal(stored.title);
+        } else if (!stored.titleKey.isEmpty()) {
+            title = Component.translatable(stored.titleKey);
+        } else {
+            title = type.title().get();
+        }
         HuiWindow window = new HuiWindow(stored.id, typeId, title, type.createContent());
         window.setBounds(stored.x, stored.y, window.width(), window.height());
         window.setMinimized(stored.minimized);
@@ -302,6 +311,7 @@ public final class HuiDesktopScreen extends Screen {
             stored.id = window.uid();
             stored.type = window.typeId().toString();
             stored.titleKey = "";
+            stored.title = window.customTitle() ? window.title().getString() : "";
             stored.x = window.x();
             stored.y = window.y();
             stored.width = window.width();
@@ -741,6 +751,7 @@ public final class HuiDesktopScreen extends Screen {
                 window.pinned() ? "hui.menu.unpin_window" : "hui.menu.pin_window",
                 () -> window.setPinned(!window.pinned())));
         entries.add(ContextMenu.Entry.of("hui.menu.window_properties", () -> openProperties(window)));
+        entries.add(ContextMenu.Entry.of("hui.menu.rename_window", () -> openRenameWindow(window)));
         this.menu = new ContextMenu(this.font, (int) mouseX, (int) mouseY, this.width, this.height, entries);
     }
 
@@ -780,6 +791,28 @@ public final class HuiDesktopScreen extends Screen {
         bringToFront(properties);
     }
 
+    /** Opens a small Ui based window with a text input to rename the given window. */
+    private void openRenameWindow(HuiWindow target) {
+        TextInputWidget input = Ui.textInput(target.title().getString(), 32, value -> {}, () -> {});
+        HuiWindow rename = new HuiWindow(UUID.randomUUID().toString(), PROPERTIES_WINDOW,
+                Component.translatable("hui.rename_window.title"), new TextWindowContent(java.util.List.of(), 10, 10));
+        PanelWidget root = Ui.column().padding(6).gap(4)
+                .child(Ui.mutedLabel(() -> Component.translatable("hui.rename_window.label")))
+                .child(input)
+                .child(Ui.row().gap(4)
+                        .child(Ui.button(Component.translatable("hui.rename_window.confirm"), () -> {
+                            String value = input.value().trim();
+                            target.setCustomTitle(Component.literal(value.isEmpty() ? target.title().getString() : value));
+                            closeWindow(rename);
+                        }))
+                        .child(Ui.button(Component.translatable("hui.rename_window.cancel"), () -> closeWindow(rename))));
+        rename.setContent(new UiPanelContent(root));
+        rename.content().init(this.width, this.height);
+        rename.setPosition(Math.max(4, target.x() + 24), Math.max(TAB_TOP + TAB_HEIGHT, target.y() + 24));
+        clamp(rename);
+        this.windows.add(rename);
+        bringToFront(rename);
+    }
     private void openWindowManager() {
         HuiScreens.open(this.minecraft, new HuiWindowManagerScreen(this));
     }

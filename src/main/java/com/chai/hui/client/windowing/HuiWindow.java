@@ -17,6 +17,7 @@ public final class HuiWindow {
     private final Identifier typeId;
     private WindowContent content;
     private Component title;
+    private boolean customTitle;
     private int x;
     private int y;
     private int width;
@@ -48,6 +49,16 @@ public final class HuiWindow {
 
     public void setTitle(Component title) {
         this.title = title;
+    }
+
+    public boolean customTitle() {
+        return this.customTitle;
+    }
+
+    /** Sets a player chosen title; it is persisted literally instead of the window type default. */
+    public void setCustomTitle(Component title) {
+        this.title = title;
+        this.customTitle = true;
     }
 
     public WindowContent content() {

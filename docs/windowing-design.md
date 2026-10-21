@@ -309,3 +309,31 @@ HuiWindows.register(Identifier.of("mymod", "machine_window"), registry -> regist
 - 跨窗口 `Shift+点击` 自动转移（目前仍是两次点击搬运）；
 - 非活动窗口后台全量同步（当前鼠标移入刷新）；
 - 页面/窗口重命名（需要文本输入控件，计划随 P4 元素树一起做）。
+
+## 19. P4：窗口 API / 控件库 / 重命名 / 全屏兜底（已实现）
+
+- **窗口注册 API**（`com.chai.hui.client.windowing.api`）：
+  ```java
+  HuiWindowApi.register(Identifier.fromNamespaceAndPath("mymod", "machine"))
+      .title(() -> Component.translatable("mymod.window.machine"))
+      .content(() -> new UiPanelContent(Ui.column()
+          .gap(4)
+          .child(Ui.label(Component.literal("Hello")))
+          .child(Ui.button(Component.literal("OK"), () -> {}))))
+      .register();
+  ```
+  `HuiWindowApi.open(minecraft, id)` 在桌面里打开该类型窗口；`HuiWindowApi.openFullscreen(minecraft, screen)` 是
+  「全屏兜底」入口：不能嵌入的自定义 GUI 直接用原版全屏界面，保证功能可用。
+- **控件库**（`client/windowing/ui`）：`Ui` 声明式构建 + `PanelWidget`（column/row、padding/gap）、`LabelWidget`、
+  `ButtonWidget`、`TextInputWidget`（可聚焦、支持输入/退格/回车）、`UiPanelContent`（负责渲染和输入分发）。
+  示例窗口已改成 Ui 控件展示（标签 + 文本输入）。
+- **窗口重命名**：窗口右键菜单新增「重命名窗口…」，用 Ui 文本输入修改名称；自定义名称以字面量写入布局
+  （`WindowLayout.title`），重开存档后保留；固定窗口恢复时同样保留自定义名称。
+- **JEI 兼容（未完成，明确说明）**：JEI 的配方面板/拖拽依赖 `AbstractContainerScreen` 与它注册的 overlay 流程，
+  而 HUI 的窗口是嵌进桌面的独立 Screen 实例，需要给 JEI 提供 `SlotView` 适配层并接管它的 overlay 渲染，
+  工作量比其余 P4 项大。本轮没有加入 JEI 依赖，避免半成品；作为后续独立步骤处理。
+- **小项状态**：
+  - 跨窗口 `Shift+点击`：未单独做——由于容器窗口已裁掉玩家背包、物品栏窗口显示真实背包，`Shift+点击` 在容器
+    菜单内快速移动到玩家背包本身可用，配合物品栏窗口的自动刷新；真正「Shift 从一个窗口转到另一个窗口的容器」
+    仍未实现（目前两次点击搬运）。
+  - 非活动窗口后台同步：未做，仍靠鼠标移入激活刷新。

@@ -143,6 +143,14 @@ Minecraft **26.3** / NeoForge **26.3.0.90** 的 GUI / HUD 修改模组。
   - **创造持物修复**：创造模式拿着物品把鼠标移到容器窗口上不再丢失；
   - 限制：非活动窗口内容可能短暂陈旧（鼠标移入会刷新）、`Shift+点击` 目前只在同一菜单内快速移动。
 
+- **窗口 API 与控件库（P4）**：
+  - `HuiWindowApi.register(id).title(...).content(...).register()` 注册自定义窗口类型；
+    `HuiWindowApi.open(minecraft, id)` 在桌面打开，`HuiWindowApi.openFullscreen(minecraft, screen)` 做全屏兜底；
+  - 声明式控件：`Ui.column()/row()`、`Ui.label`、`Ui.button`、`Ui.textInput`，配 `UiPanelContent` 使用；
+  - **窗口重命名**：窗口右键菜单「重命名窗口…」，Ui 文本输入改名，自定义名称随布局保存；
+  - 示例窗口已改为 Ui 控件展示（标签 + 文本输入）。
+- 尚未完成：JEI 适配（需要 SlotView 适配层并接管 JEI overlay，单独一步做）、跨窗口 `Shift+点击` 自动转移、
+  非活动窗口后台同步。
 尚未接入（按设计文档分期）：跨窗口 `Shift+点击` 自动转移、非活动窗口后台同步、页面/窗口重命名、  
 窗口 API 与 JEI 兼容（P4）。完整设计见 [`docs/windowing-design.md`](docs/windowing-design.md)。
 
@@ -169,6 +177,10 @@ Minecraft **26.3** / NeoForge **26.3.0.90** 的 GUI / HUD 修改模组。
 ![创造模式下的组合（容器 + 创造物品栏）](docs/windowing-container-pair-creative.png)
 
 ![固定的容器窗口在重开桌面后恢复](docs/windowing-chest-restored.png)
+
+![Ui 控件库示例窗口](docs/windowing-ui-demo.png)
+
+![窗口重命名（Ui 文本输入）](docs/windowing-rename.png)
 
 ## 构建
 
