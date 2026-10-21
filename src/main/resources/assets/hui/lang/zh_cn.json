@@ -1,0 +1,33 @@
+{
+  "hui.screen.title": "HUI 设置",
+  "hui.screen.hint": "已保存到 config/hui-client.toml",
+
+  "hui.config.enabled": "信息面板：%s",
+  "hui.config.corner": "停靠角落：%s",
+  "hui.config.opacity": "背景不透明度：%s",
+  "hui.config.offset_x": "水平偏移：%s",
+  "hui.config.offset_y": "垂直偏移：%s",
+  "hui.config.show_fps": "显示帧率：%s",
+  "hui.config.show_coords": "显示坐标：%s",
+  "hui.config.show_dimension": "显示维度：%s",
+  "hui.config.show_biome": "显示生物群系：%s",
+  "hui.config.show_time": "显示时钟：%s",
+
+  "hui.value.on": "开",
+  "hui.value.off": "关",
+
+  "hui.corner.top_left": "左上",
+  "hui.corner.top_right": "右上",
+  "hui.corner.bottom_left": "左下",
+  "hui.corner.bottom_right": "右下",
+
+  "hui.hud.fps": "帧率 %s",
+  "hui.hud.xyz": "坐标 %s %s %s",
+  "hui.hud.dimension": "维度 %s",
+  "hui.hud.biome": "群系 %s",
+  "hui.hud.time": "第 %s 天  %s",
+
+  "key.category.hui.main": "HUI",
+  "key.hui.toggle_hud": "切换 HUD 信息面板",
+  "key.hui.open_settings": "打开 HUI 设置界面"
+}

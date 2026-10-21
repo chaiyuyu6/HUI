@@ -1,0 +1,33 @@
+{
+  "hui.screen.title": "HUI Settings",
+  "hui.screen.hint": "Saved to config/hui-client.toml",
+
+  "hui.config.enabled": "Panel enabled: %s",
+  "hui.config.corner": "Corner: %s",
+  "hui.config.opacity": "Background opacity: %s",
+  "hui.config.offset_x": "Offset X: %s",
+  "hui.config.offset_y": "Offset Y: %s",
+  "hui.config.show_fps": "Show FPS: %s",
+  "hui.config.show_coords": "Show coordinates: %s",
+  "hui.config.show_dimension": "Show dimension: %s",
+  "hui.config.show_biome": "Show biome: %s",
+  "hui.config.show_time": "Show clock: %s",
+
+  "hui.value.on": "on",
+  "hui.value.off": "off",
+
+  "hui.corner.top_left": "top left",
+  "hui.corner.top_right": "top right",
+  "hui.corner.bottom_left": "bottom left",
+  "hui.corner.bottom_right": "bottom right",
+
+  "hui.hud.fps": "FPS %s",
+  "hui.hud.xyz": "XYZ %s %s %s",
+  "hui.hud.dimension": "Dim %s",
+  "hui.hud.biome": "Biome %s",
+  "hui.hud.time": "Day %s  %s",
+
+  "key.category.hui.main": "HUI",
+  "key.hui.toggle_hud": "Toggle HUD panel",
+  "key.hui.open_settings": "Open HUI settings"
+}
