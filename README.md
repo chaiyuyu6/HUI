@@ -182,6 +182,10 @@ Minecraft **26.3** / NeoForge **26.3.0.90** 的 GUI / HUD 修改模组。
 
 ![右键酿造台直接进入 HUI 窗口（酿造台 + 创造物品栏）](docs/windowing-brewing-direct.png)
 
+![切石机窗口现在显示完整面板](docs/windowing-stonecutter.png)
+
+![手持物品拖到其它窗口上方时仍绘制在最上层](docs/windowing-drag-overlay.png)
+
 ![窗口重命名（Ui 文本输入）](docs/windowing-rename.png)
 
 ## 构建

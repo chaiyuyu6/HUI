@@ -81,29 +81,30 @@ public final class EmbeddedScreenContent implements WindowContent {
 
     private static int[] containerCrop(AbstractContainerScreen<?> screen) {
         AbstractContainerMenu menu = screen.getMenu();
-        int minX = Integer.MAX_VALUE;
-        int minY = Integer.MAX_VALUE;
-        int maxX = Integer.MIN_VALUE;
-        int maxY = Integer.MIN_VALUE;
+        boolean hasContainerSlots = false;
+        int playerInventoryTop = Integer.MAX_VALUE;
         for (Slot slot : menu.slots) {
             if (slot.container instanceof Inventory) {
-                continue;
+                playerInventoryTop = Math.min(playerInventoryTop, slot.y);
+            } else {
+                hasContainerSlots = true;
             }
-            minX = Math.min(minX, slot.x);
-            minY = Math.min(minY, slot.y);
-            maxX = Math.max(maxX, slot.x);
-            maxY = Math.max(maxY, slot.y);
         }
         int imageWidth = screen.getImageWidth();
         int imageHeight = screen.getImageHeight();
-        if (minX == Integer.MAX_VALUE) {
+        if (!hasContainerSlots) {
             return new int[] {0, 0, imageWidth, imageHeight};
         }
-        int left = Math.max(0, minX - 3);
-        // The window chrome already shows the container title, so crop away the panel label and show only slots.
-        int top = Math.max(0, minY - 3);
-        int right = Math.min(imageWidth, maxX + 20);
-        int bottom = Math.min(imageHeight, maxY + 18);
+        // Show the whole panel above the player inventory (custom screens like the stone cutter draw their recipe
+        // grid next to the slots, so cropping to the slot bounding box cut them off). The panel title is skipped
+        // because the window chrome already shows it; the player inventory label is skipped too.
+        int left = 4;
+        int right = Math.max(left + 40, imageWidth - 4);
+        int top = 12;
+        int bottom = playerInventoryTop == Integer.MAX_VALUE ? imageHeight - 4 : playerInventoryTop - 13;
+        if (bottom - top < 24) {
+            bottom = Math.min(imageHeight, top + 24);
+        }
         return new int[] {left, top, right - left, bottom - top};
     }
 
@@ -210,8 +211,12 @@ public final class EmbeddedScreenContent implements WindowContent {
 
         int deltaX = this.deltaX(originX);
         int deltaY = this.deltaY(originY);
-        int localMouseX = mouseX - deltaX;
-        int localMouseY = mouseY - deltaY;
+        boolean overContent = mouseX >= originX && mouseX < originX + this.srcWidth && mouseY >= originY
+                && mouseY < originY + this.srcHeight;
+        // Outside the visible viewport the screen must not hover hidden slots (they are cropped away), otherwise
+        // tooltips for e.g. the player inventory would pop up when the mouse is below the window.
+        int localMouseX = overContent ? mouseX - deltaX : -10000;
+        int localMouseY = overContent ? mouseY - deltaY : -10000;
 
         graphics.enableScissor(originX, originY, originX + this.srcWidth, originY + this.srcHeight);
         if (this.background != null) {

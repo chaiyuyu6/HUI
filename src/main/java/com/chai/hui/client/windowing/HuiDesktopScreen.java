@@ -141,7 +141,10 @@ public final class HuiDesktopScreen extends Screen {
             restored.setTitle(screen.getTitle());
             clamp(restored);
             ensureInventoryCompanion();
-            bringToFront(restored);
+            // Do not steal focus from a window the player just opened (restored containers arrive a bit later).
+            if (this.focused == null) {
+                bringToFront(restored);
+            }
             return;
         }
         HuiWindow window = new HuiWindow(UUID.randomUUID().toString(), HuiWindowTypes.BLOCK_ENTITY, screen.getTitle(),
@@ -700,7 +703,9 @@ public final class HuiDesktopScreen extends Screen {
             if (source.content() instanceof EmbeddedScreenContent sourceContent
                     && sourceContent.serverBacked() && !sourceContent.screenMenu().getCarried().isEmpty()) {
                 HuiWindow target = windowAt(event.x(), event.y());
-                if (target != null && target != source && target.content() instanceof EmbeddedScreenContent targetContent) {
+                if (target != null && target != source
+                        && target.content() instanceof EmbeddedScreenContent targetContent
+                        && targetContent.serverBacked()) {
                     net.minecraft.world.item.ItemStack carried = sourceContent.screenMenu().getCarried().copy();
                     activateContent(targetContent);
                     if (targetContent.isOverSlot((int) event.x(), (int) event.y(), target.contentX(),
