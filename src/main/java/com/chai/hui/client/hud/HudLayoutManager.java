@@ -27,8 +27,8 @@ import net.neoforged.neoforge.client.gui.GuiLayer;
 import net.neoforged.neoforge.client.gui.VanillaGuiLayers;
 
 /**
- * Takes ownership of the vanilla HUD layers that HUI can re-arrange, applies the saved layout every frame, and exposes
- * the same data to the HUD editor.
+ * Takes ownership of the HUD layers that HUI can re-arrange, applies the saved layout every frame, and exposes the same
+ * data to the HUD editor.
  *
  * <p>Why the vanilla layers are replaced: NeoForge lets mods wrap a HUD layer, but not reorder layers. To support
  * "bring to front" HUI captures the original layers, replaces them with no-op layers and draws the captured layers
@@ -38,7 +38,9 @@ import net.neoforged.neoforge.client.gui.VanillaGuiLayers;
  * well, because vanilla stacks them using {@code Hud#leftHeight} / {@code Hud#rightHeight}, which the health layer
  * updates while it renders. Rendering them in the same order as vanilla keeps their positions identical.
  *
- * <p>Movable blocks: health, experience, potion effects, hotbar, chat and the scoreboard sidebar.
+ * <p>Built-in movable blocks: health, experience, potion effects, hotbar, chat and the scoreboard sidebar. Everything
+ * else that was registered when HUI receives the event (other vanilla layers and other mods' HUD layers) is discovered
+ * automatically and wrapped so it can be moved and hidden too; see {@link AutoHudBlock}.
  */
 public final class HudLayoutManager {
     public static final Identifier HEALTH = Identifier.fromNamespaceAndPath(HuiMod.MOD_ID, "health");
@@ -75,6 +77,7 @@ public final class HudLayoutManager {
             return;
         }
 
+        // --- Vanilla layers HUI knows by name and renders itself (so they can be reordered) -------------------
         capture(event, VanillaGuiLayers.PLAYER_HEALTH);
         capture(event, VanillaGuiLayers.ARMOR_LEVEL);
         capture(event, VanillaGuiLayers.FOOD_LEVEL);
@@ -108,16 +111,62 @@ public final class HudLayoutManager {
                 layers(VanillaGuiLayers.SCOREBOARD_SIDEBAR),
                 HudLayoutManager::scoreboardBounds));
 
+        // --- Everything else that is registered at this point (vanilla leftovers and other mods' HUD layers) --
+        for (Identifier id : HudLayerDiscovery.discover(event)) {
+            if (this.capturedLayers.containsKey(id) || HuiMod.MOD_ID.equals(id.getNamespace())) {
+                continue;
+            }
+            captureAutoBlock(event, id);
+        }
+
         this.active = HudLayoutStore.load(this.blocks.keySet());
         event.registerAboveAll(ROOT_LAYER, this::renderHud);
-        HuiMod.LOGGER.info("HUI HUD layout manager initialised with {} movable blocks", this.blocks.size());
+        HuiMod.LOGGER.info("HUI HUD layout manager initialised with {} blocks ({} auto-detected)",
+                this.blocks.size(), this.blocks.size() - BUILTIN_BLOCK_COUNT);
     }
+
+    private static final int BUILTIN_BLOCK_COUNT = 6;
 
     private void capture(RegisterGuiLayersEvent event, Identifier id) {
         event.wrapLayer(id, original -> {
             this.capturedLayers.put(id, original);
             return NOOP_LAYER;
         });
+    }
+
+    /**
+     * Wraps an auto-detected layer in a pass-through layer that applies the configured offset and visibility while
+     * keeping the layer in NeoForge's own rendering order.
+     */
+    private void captureAutoBlock(RegisterGuiLayersEvent event, Identifier id) {
+        AutoHudBlock[] holder = new AutoHudBlock[1];
+        event.wrapLayer(id, original -> {
+            AutoHudBlock block = new AutoHudBlock(id, original);
+            holder[0] = block;
+            return (graphics, deltaTracker) -> renderAutoLayer(id, original, graphics, deltaTracker);
+        });
+        if (holder[0] != null) {
+            this.blocks.put(id, holder[0]);
+        }
+    }
+
+    private void renderAutoLayer(Identifier id, GuiLayer layer, GuiGraphicsExtractor graphics,
+            DeltaTracker deltaTracker) {
+        if (this.working != null) {
+            // The editor renders its own preview of every block.
+            return;
+        }
+        HudLayout layout = this.active;
+        if (layout.isHidden(id)) {
+            return;
+        }
+        graphics.pose().pushMatrix();
+        graphics.pose().translate(layout.offsetX(id), layout.offsetY(id));
+        try {
+            layer.render(graphics, deltaTracker);
+        } finally {
+            graphics.pose().popMatrix();
+        }
     }
 
     private List<GuiLayer> layers(Identifier... ids) {
@@ -168,7 +217,8 @@ public final class HudLayoutManager {
                 continue;
             }
             HudBlock block = this.blocks.get(id);
-            if (block != null) {
+            // Auto-detected layers render themselves from their NeoForge wrapper; only built-in blocks are painted here.
+            if (block != null && !(block instanceof AutoHudBlock)) {
                 block.render(graphics, deltaTracker, layout.offsetX(id), layout.offsetY(id));
             }
         }
@@ -227,17 +277,18 @@ public final class HudLayoutManager {
 
     // --- Block queries used by the editor ---------------------------------------------------
 
-    public Collection<HudBlock> blocks() {
-        return List.copyOf(this.blocks.values());
-    }
-
-    public List<HudBlock> blocksInDrawOrder(HudLayout layout) {
+    public List<HudBlock> blocksInDrawOrder(HudLayout layout, int screenWidth, int screenHeight) {
         List<HudBlock> ordered = new ArrayList<>(this.blocks.size());
         for (Identifier id : layout.ordered(this.blocks.keySet())) {
             HudBlock block = this.blocks.get(id);
-            if (block != null) {
-                ordered.add(block);
+            if (block == null) {
+                continue;
             }
+            // Auto-detected layers that currently draw nothing, or that are full screen overlays, stay out of the way.
+            if (block instanceof AutoHudBlock auto && !auto.isEditable(screenWidth, screenHeight)) {
+                continue;
+            }
+            ordered.add(block);
         }
         return ordered;
     }
@@ -248,7 +299,7 @@ public final class HudLayoutManager {
 
     /** @return the topmost block under the given point, or {@code null} if the point is empty. */
     public HudBlock blockAt(double mouseX, double mouseY, HudLayout layout, int screenWidth, int screenHeight) {
-        List<HudBlock> ordered = blocksInDrawOrder(layout);
+        List<HudBlock> ordered = blocksInDrawOrder(layout, screenWidth, screenHeight);
         for (int index = ordered.size() - 1; index >= 0; index--) {
             HudBlock block = ordered.get(index);
             if (boundsOf(block, layout, screenWidth, screenHeight).contains(mouseX, mouseY)) {

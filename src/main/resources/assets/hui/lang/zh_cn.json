@@ -49,5 +49,12 @@
   "hui.menu.hui_config": "HUI 配置",
   "hui.menu.hide": "隐藏该 HUD",
   "hui.menu.show": "显示该 HUD",
-  "hui.menu.bring_front": "将该 HUD 置顶"
+  "hui.menu.bring_front": "将该 HUD 置顶",
+  "hui.block.minecraft.crosshair": "准星",
+  "hui.block.minecraft.tab_list": "玩家列表",
+  "hui.block.minecraft.boss_overlay": "Boss 血条",
+  "hui.block.minecraft.subtitle_overlay": "字幕",
+  "hui.block.minecraft.overlay_message": "动作栏",
+  "hui.block.minecraft.spectator_tooltip": "旁观者提示",
+  "hui.block.minecraft.title": "标题"
 }

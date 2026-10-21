@@ -10,6 +10,7 @@ import com.chai.hui.client.screen.HuiScreens;
 import net.minecraft.client.Minecraft;
 import net.minecraft.resources.Identifier;
 import net.neoforged.api.distmarker.Dist;
+import net.neoforged.bus.api.EventPriority;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.fml.ModContainer;
 import net.neoforged.fml.common.Mod;
@@ -31,7 +32,8 @@ public final class HuiClient {
     public static final Identifier HUD_LAYER_ID = Identifier.fromNamespaceAndPath(HuiMod.MOD_ID, "info_hud");
 
     public HuiClient(ModContainer modContainer, IEventBus modEventBus) {
-        modEventBus.addListener(this::registerGuiLayers);
+        // LOWEST so every other mod has registered its HUD layers before HUI enumerates them for auto-detection.
+        modEventBus.addListener(EventPriority.LOWEST, this::registerGuiLayers);
         modEventBus.addListener(this::registerKeyMappings);
         NeoForge.EVENT_BUS.addListener(this::onClientTick);
 

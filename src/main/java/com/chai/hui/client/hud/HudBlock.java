@@ -2,10 +2,11 @@ package com.chai.hui.client.hud;
 
 import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 
 /**
- * A logical HUD block that can be moved, hidden and reordered by the HUD editor.
+ * A logical HUD block that can be moved, hidden and (if {@link #orderable()}) reordered by the HUD editor.
  *
  * <p>A block may be backed by one or several vanilla (or modded) HUD layers. Implementations are responsible for
  * applying the configured offsets themselves, because some blocks (health) have to compensate for the vanilla
@@ -15,8 +16,13 @@ public interface HudBlock {
     /** Unique id of this block, used as the persistence key. */
     Identifier id();
 
-    /** Translation key of the display name shown in the editor. */
-    String labelKey();
+    /** Display name shown in the editor. */
+    Component label();
+
+    /** @return whether the editor should offer "bring to front" for this block. */
+    default boolean orderable() {
+        return true;
+    }
 
     /**
      * The block's default (un-offset) bounds for the current screen and game state.

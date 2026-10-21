@@ -49,5 +49,12 @@
   "hui.menu.hui_config": "HUI settings",
   "hui.menu.hide": "Hide this HUD",
   "hui.menu.show": "Show this HUD",
-  "hui.menu.bring_front": "Bring to front"
+  "hui.menu.bring_front": "Bring to front",
+  "hui.block.minecraft.crosshair": "Crosshair",
+  "hui.block.minecraft.tab_list": "Player list",
+  "hui.block.minecraft.boss_overlay": "Boss bar",
+  "hui.block.minecraft.subtitle_overlay": "Subtitles",
+  "hui.block.minecraft.overlay_message": "Action bar",
+  "hui.block.minecraft.spectator_tooltip": "Spectator tooltip",
+  "hui.block.minecraft.title": "Title"
 }

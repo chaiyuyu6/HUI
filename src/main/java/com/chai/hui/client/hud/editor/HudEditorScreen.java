@@ -1,5 +1,6 @@
 package com.chai.hui.client.hud.editor;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import com.chai.hui.client.hud.HudBlock;
@@ -38,8 +39,11 @@ public final class HudEditorScreen extends Screen {
     private static final int ACCENT = 0xFF3FC7FF;
     private static final int HIDDEN_OVERLAY = 0x99000000;
     private static final int HIDDEN_TEXT = 0xFFFF7070;
-    private static final int HINT_BASE_ALPHA = 120;
-    private static final int HINT_PULSE_ALPHA = 110;
+    /** The hint fades in once, stays briefly and fades out; it does not keep pulsing. */
+    private static final int HINT_FADE_IN_MS = 250;
+    private static final int HINT_HOLD_MS = 2200;
+    private static final int HINT_FADE_OUT_MS = 700;
+    private static final int HINT_MAX_ALPHA = 220;
     /** Distance of the hint baseline from the bottom edge; keeps it clear of the vanilla hotbar. */
     private static final int HINT_BOTTOM_OFFSET = 56;
     private static final int CORNER_LENGTH = 6;
@@ -89,7 +93,7 @@ public final class HudEditorScreen extends Screen {
     }
 
     private void renderBlocks(GuiGraphicsExtractor graphics, HudLayout layout) {
-        for (HudBlock block : this.manager.blocksInDrawOrder(layout)) {
+        for (HudBlock block : this.manager.blocksInDrawOrder(layout, this.width, this.height)) {
             this.manager.renderBlock(graphics, this.minecraft.getDeltaTracker(), block, layout);
             if (layout.isHidden(block.id())) {
                 HudRect rect = this.manager.boundsOf(block, layout, this.width, this.height);
@@ -101,7 +105,7 @@ public final class HudEditorScreen extends Screen {
     private void renderFrames(GuiGraphicsExtractor graphics, HudLayout layout, int mouseX, int mouseY) {
         HudBlock hovered = this.manager.blockAt(mouseX, mouseY, layout, this.width, this.height);
 
-        for (HudBlock block : this.manager.blocksInDrawOrder(layout)) {
+        for (HudBlock block : this.manager.blocksInDrawOrder(layout, this.width, this.height)) {
             HudRect rect = this.manager.boundsOf(block, layout, this.width, this.height);
             boolean isSelected = this.selected != null && this.selected.id().equals(block.id());
             boolean isHovered = hovered != null && hovered.id().equals(block.id());
@@ -116,7 +120,7 @@ public final class HudEditorScreen extends Screen {
             // bottom centre would overlap each other.
             if (isSelected || isHovered) {
                 Component label = Component.translatable("hui.editor.block_label",
-                        Component.translatable(block.labelKey()),
+                        block.label(),
                         layout.offsetX(block.id()),
                         layout.offsetY(block.id()));
                 graphics.text(this.font, label, rect.x(), Math.max(2, rect.y() - 11), frameColor, true);
@@ -145,13 +149,27 @@ public final class HudEditorScreen extends Screen {
     }
 
     /** Hint above the vanilla hotbar that softly fades in and out, as requested by the design notes. */
+    /** Draws the control hint once: fade in, hold, fade out, then stay hidden. */
     private void renderHint(GuiGraphicsExtractor graphics) {
         if (this.menu != null) {
             return;
         }
         long elapsed = Util.getMillis() - this.openedAt;
-        float pulse = 0.5F + 0.5F * Mth.sin(elapsed / 500.0F);
-        int alpha = HINT_BASE_ALPHA + (int) (HINT_PULSE_ALPHA * pulse);
+        int holdEnd = HINT_FADE_IN_MS + HINT_HOLD_MS;
+        int fadeOutEnd = holdEnd + HINT_FADE_OUT_MS;
+        if (elapsed >= fadeOutEnd) {
+            return;
+        }
+
+        float progress;
+        if (elapsed < HINT_FADE_IN_MS) {
+            progress = elapsed / (float) HINT_FADE_IN_MS;
+        } else if (elapsed < holdEnd) {
+            progress = 1.0F;
+        } else {
+            progress = 1.0F - (elapsed - holdEnd) / (float) HINT_FADE_OUT_MS;
+        }
+        int alpha = Math.max(0, Math.min(HINT_MAX_ALPHA, (int) (progress * HINT_MAX_ALPHA)));
         int color = (alpha << 24) | 0xFFFFFF;
 
         Component hint = Component.translatable("hui.editor.hint");
@@ -221,11 +239,15 @@ public final class HudEditorScreen extends Screen {
         List<ContextMenu.Entry> entries;
         if (hit != null) {
             boolean hidden = layout.isHidden(hit.id());
-            entries = List.of(
-                    ContextMenu.Entry.of(hidden ? "hui.menu.show" : "hui.menu.hide",
-                            () -> layout.setHidden(hit.id(), !hidden)),
-                    ContextMenu.Entry.of("hui.menu.bring_front",
-                            () -> layout.bringToFront(hit.id())));
+            entries = new ArrayList<>(2);
+            entries.add(ContextMenu.Entry.of(hidden ? "hui.menu.show" : "hui.menu.hide",
+                    () -> layout.setHidden(hit.id(), !hidden)));
+            // Auto-detected layers are rendered by NeoForge's own pipeline to keep third-party HUD order intact, so
+            // only blocks HUI renders itself can be brought to the front.
+            if (hit.orderable()) {
+                entries.add(ContextMenu.Entry.of("hui.menu.bring_front",
+                        () -> layout.bringToFront(hit.id())));
+            }
         } else {
             entries = List.of(
                     ContextMenu.Entry.of("hui.menu.save_exit", this::saveAndClose),

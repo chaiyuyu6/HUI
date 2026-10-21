@@ -5,24 +5,25 @@ import java.util.function.BiFunction;
 
 import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 import net.neoforged.neoforge.client.gui.GuiLayer;
 
 /**
- * A {@link HudBlock} made of one or more vanilla HUD layers that are simply drawn translated by the configured offset.
+ * A {@link HudBlock} made of one or more HUD layers that are simply drawn translated by the configured offset.
  *
- * <p>Typical for blocks whose vanilla position only depends on the window size (experience bar, potion effects).
+ * <p>Typical for blocks whose vanilla position only depends on the window size (experience bar, hotbar, ...).
  */
 public class SimpleHudBlock implements HudBlock {
     private final Identifier id;
-    private final String labelKey;
+    private final Component label;
     private final List<GuiLayer> layers;
     private final BiFunction<Integer, Integer, HudRect> bounds;
 
     public SimpleHudBlock(Identifier id, String labelKey, List<GuiLayer> layers,
             BiFunction<Integer, Integer, HudRect> bounds) {
         this.id = id;
-        this.labelKey = labelKey;
+        this.label = Component.translatable(labelKey);
         this.layers = List.copyOf(layers);
         this.bounds = bounds;
     }
@@ -33,8 +34,8 @@ public class SimpleHudBlock implements HudBlock {
     }
 
     @Override
-    public String labelKey() {
-        return this.labelKey;
+    public Component label() {
+        return this.label;
     }
 
     @Override
