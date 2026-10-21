@@ -1,49 +1,109 @@
 package com.chai.hui.client.windowing;
 
-import com.chai.hui.HuiMod;
+import java.lang.reflect.Method;
+
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
+import net.minecraft.client.gui.screens.inventory.CreativeModeInventoryScreen;
 import net.minecraft.client.gui.screens.inventory.InventoryScreen;
+import net.minecraft.client.input.CharacterEvent;
+import net.minecraft.client.input.KeyEvent;
 import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.client.renderer.RenderPipelines;
 import net.minecraft.resources.Identifier;
-import net.minecraft.network.chat.Component;
 import net.minecraft.world.entity.player.Player;
+import org.jetbrains.annotations.Nullable;
 
 /**
- * Embeds a vanilla {@link InventoryScreen}'s contents inside a window.
+ * Embeds an arbitrary {@link AbstractContainerScreen} inside a window.
  *
- * <p>26.3's GUI is a render-state extraction model, so the panel is drawn at the window origin and the screen's own
- * content (slots, labels, widgets) is rendered with a translated pose and a scissor rectangle; mouse coordinates are
- * transformed back into the screen's coordinate space before being forwarded. The carried stack and the tooltip are
- * drawn outside the scissor at the desktop cursor position.
+ * <p>Vanilla GUI is a render-state extraction model, so the content is rendered with a translated pose and a scissor
+ * rectangle; mouse coordinates are transformed back into the screen's coordinate space before being forwarded. A
+ * viewport ({@code srcX/srcY/srcWidth/srcHeight} relative to the screen's {@code leftPos/topPos}) decides which part of
+ * the screen is shown, which is how the "default inventory" window crops the vanilla inventory panel down to the
+ * 27 storage slots + hotbar row.
  *
- * <p>This is the P0 feasibility prototype: it proves that "translate + scissor + forward input" works for standard
- * container screens, which is the approach planned for block entity windows.
+ * <p>The carried stack and tooltip are drawn outside the scissor at the desktop cursor position.
  */
 public final class EmbeddedScreenContent implements WindowContent {
     private static final Identifier INVENTORY_TEXTURE =
             Identifier.withDefaultNamespace("textures/gui/container/inventory.png");
-    private static final int WIDTH = 176;
-    private static final int HEIGHT = 166;
+    private static final int INVENTORY_WIDTH = 176;
+    private static final int INVENTORY_HEIGHT = 166;
 
-    private final Player player;
-    private final EmbeddableInventoryScreen screen;
+    /** Vanilla inventory panel region that contains the 27 storage slots plus the hotbar row. */
+    private static final int CROP_X = 7;
+    private static final int CROP_Y = 83;
+    private static final int CROP_WIDTH = 162;
+    private static final int CROP_HEIGHT = 76;
+
+    /** The creative panel has a tab row above and below the panel itself. */
+    private static final int CREATIVE_TOP_MARGIN = 50;
+    private static final int CREATIVE_BOTTOM_MARGIN = 28;
+
+    private static final @Nullable Method EXTRACT_TOOLTIP = findTooltipMethod();
+
+    /** Paints a screen background at the window origin; {@code localMouse*} is in the embedded screen's space. */
+    public interface BackgroundPainter {
+        void paint(GuiGraphicsExtractor graphics, int originX, int originY, int localMouseX, int localMouseY,
+                float partialTick);
+    }
+
+    /** The full survival inventory window (crafting, armor, offhand, player preview). */
+    public static EmbeddedScreenContent survival(Player player) {
+        return new EmbeddedScreenContent(new InventoryScreen(player), 0, 0, INVENTORY_WIDTH, INVENTORY_HEIGHT,
+                (graphics, originX, originY, localMouseX, localMouseY, partialTick) -> {
+                    graphics.blit(RenderPipelines.GUI_TEXTURED, INVENTORY_TEXTURE, originX, originY, 0.0F, 0.0F,
+                            INVENTORY_WIDTH, INVENTORY_HEIGHT, 256, 256);
+                    InventoryScreen.extractEntityInInventoryFollowsMouse(graphics, originX + 26, originY + 8,
+                            originX + 75, originY + 78, 30, 0.0625F, localMouseX, localMouseY, player);
+                });
+    }
+
+    /** Cropped "default inventory" window: only the 27 storage slots and the hotbar row of the player inventory. */
+    public static EmbeddedScreenContent croppedInventory(Player player) {
+        return new EmbeddedScreenContent(new InventoryScreen(player), CROP_X, CROP_Y, CROP_WIDTH, CROP_HEIGHT,
+                (graphics, originX, originY, localMouseX, localMouseY, partialTick) -> graphics.blit(
+                        RenderPipelines.GUI_TEXTURED, INVENTORY_TEXTURE, originX - CROP_X, originY - CROP_Y, 0.0F,
+                        0.0F, INVENTORY_WIDTH, INVENTORY_HEIGHT, 256, 256));
+    }
+
+    /** The creative inventory window, including its tab rows above and below the panel. */
+    public static EmbeddedScreenContent creative(LocalPlayer player) {
+        CreativeModeInventoryScreen screen = new CreativeModeInventoryScreen(player,
+                player.connection.enabledFeatures(), Minecraft.getInstance().options.operatorItemsTab().get());
+        return new EmbeddedScreenContent(screen, 0, -CREATIVE_TOP_MARGIN, screen.getImageWidth(),
+                screen.getImageHeight() + CREATIVE_TOP_MARGIN + CREATIVE_BOTTOM_MARGIN, null);
+    }
+
+    private final AbstractContainerScreen<?> screen;
+    private final int srcX;
+    private final int srcY;
+    private final int srcWidth;
+    private final int srcHeight;
+    private final @Nullable BackgroundPainter background;
     private boolean initialized;
 
-    public EmbeddedScreenContent(Player player) {
-        this.player = player;
-        this.screen = new EmbeddableInventoryScreen(player);
+    public EmbeddedScreenContent(AbstractContainerScreen<?> screen, int srcX, int srcY, int srcWidth, int srcHeight,
+            @Nullable BackgroundPainter background) {
+        this.screen = screen;
+        this.srcX = srcX;
+        this.srcY = srcY;
+        this.srcWidth = srcWidth;
+        this.srcHeight = srcHeight;
+        this.background = background;
     }
 
     @Override
     public int preferredWidth() {
-        return WIDTH;
+        return this.srcWidth;
     }
 
     @Override
     public int preferredHeight() {
-        return HEIGHT;
+        return this.srcHeight;
     }
 
     @Override
@@ -59,21 +119,22 @@ public final class EmbeddedScreenContent implements WindowContent {
             return;
         }
 
-        int leftPos = this.screen.getLeftPos();
-        int topPos = this.screen.getTopPos();
-        int localMouseX = mouseX - originX + leftPos;
-        int localMouseY = mouseY - originY + topPos;
+        int deltaX = this.deltaX(originX);
+        int deltaY = this.deltaY(originY);
+        int localMouseX = mouseX - deltaX;
+        int localMouseY = mouseY - deltaY;
 
-        // Panel and player preview at the window origin; the screen's slots/labels are translated to match below.
-        graphics.blit(RenderPipelines.GUI_TEXTURED, INVENTORY_TEXTURE, originX, originY, 0.0F, 0.0F, WIDTH, HEIGHT, 256,
-                256);
-        InventoryScreen.extractEntityInInventoryFollowsMouse(graphics, originX + 26, originY + 8, originX + 75,
-                originY + 78, 30, 0.0625F, localMouseX, localMouseY, this.player);
-
-        graphics.enableScissor(originX, originY, originX + WIDTH, originY + HEIGHT);
+        graphics.enableScissor(originX, originY, originX + this.srcWidth, originY + this.srcHeight);
+        if (this.background != null) {
+            // Custom backgrounds are painted in window space, not in the embedded screen's space.
+            this.background.paint(graphics, originX, originY, localMouseX, localMouseY, partialTick);
+        }
         graphics.pose().pushMatrix();
-        graphics.pose().translate(originX - leftPos, originY - topPos);
+        graphics.pose().translate(deltaX, deltaY);
         try {
+            if (this.background == null) {
+                this.screen.extractBackground(graphics, localMouseX, localMouseY, partialTick);
+            }
             this.screen.extractContents(graphics, localMouseX, localMouseY, partialTick);
         } finally {
             graphics.pose().popMatrix();
@@ -82,7 +143,7 @@ public final class EmbeddedScreenContent implements WindowContent {
 
         // Carried stack and tooltip belong to the desktop cursor, not to the window region.
         this.screen.extractCarriedItem(graphics, mouseX, mouseY);
-        this.screen.extractTooltipPublic(graphics, mouseX, mouseY);
+        extractTooltip(this.screen, graphics, mouseX, mouseY);
     }
 
     @Override
@@ -101,9 +162,26 @@ public final class EmbeddedScreenContent implements WindowContent {
     }
 
     @Override
+    public boolean mouseScrolled(double mouseX, double mouseY, double scrollX, double scrollY, int originX,
+            int originY) {
+        return this.screen.mouseScrolled(mouseX - this.deltaX(originX), mouseY - this.deltaY(originY), scrollX,
+                scrollY);
+    }
+
+    @Override
+    public boolean keyPressed(KeyEvent event) {
+        return this.screen.keyPressed(event);
+    }
+
+    @Override
+    public boolean charTyped(CharacterEvent event) {
+        return this.screen.charTyped(event);
+    }
+
+    @Override
     public void tick() {
         if (this.initialized) {
-            this.screen.containerTickPublic();
+            this.screen.tick();
         }
     }
 
@@ -113,23 +191,38 @@ public final class EmbeddedScreenContent implements WindowContent {
     }
 
     private MouseButtonEvent toScreenSpace(MouseButtonEvent event, int originX, int originY) {
-        double x = event.x() - originX + this.screen.getLeftPos();
-        double y = event.y() - originY + this.screen.getTopPos();
-        return new MouseButtonEvent(x, y, event.buttonInfo());
+        return new MouseButtonEvent(event.x() - this.deltaX(originX), event.y() - this.deltaY(originY),
+                event.buttonInfo());
     }
 
-    /** Exposes the protected pieces of {@link InventoryScreen} needed by the embedder. */
-    private static final class EmbeddableInventoryScreen extends InventoryScreen {
-        private EmbeddableInventoryScreen(Player player) {
-            super(player);
-        }
+    private int deltaX(int originX) {
+        return originX - (this.screen.getLeftPos() + this.srcX);
+    }
 
-        private void extractTooltipPublic(GuiGraphicsExtractor graphics, int mouseX, int mouseY) {
-            this.extractTooltip(graphics, mouseX, mouseY);
-        }
+    private int deltaY(int originY) {
+        return originY - (this.screen.getTopPos() + this.srcY);
+    }
 
-        private void containerTickPublic() {
-            this.containerTick();
+    private static @Nullable Method findTooltipMethod() {
+        try {
+            Method method = AbstractContainerScreen.class.getDeclaredMethod("extractTooltip",
+                    GuiGraphicsExtractor.class, int.class, int.class);
+            method.setAccessible(true);
+            return method;
+        } catch (ReflectiveOperationException | RuntimeException exception) {
+            return null;
+        }
+    }
+
+    private static void extractTooltip(AbstractContainerScreen<?> screen, GuiGraphicsExtractor graphics, int mouseX,
+            int mouseY) {
+        if (EXTRACT_TOOLTIP == null) {
+            return;
+        }
+        try {
+            EXTRACT_TOOLTIP.invoke(screen, graphics, mouseX, mouseY);
+        } catch (ReflectiveOperationException ignored) {
+            // Tooltips are cosmetic; never break rendering because of the reflective call.
         }
     }
 }

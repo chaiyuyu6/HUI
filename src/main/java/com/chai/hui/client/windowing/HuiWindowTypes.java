@@ -4,11 +4,14 @@ import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import com.chai.hui.HuiMod;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
+import net.minecraft.world.entity.player.Player;
 import org.jetbrains.annotations.Nullable;
 
 /**
@@ -18,19 +21,51 @@ import org.jetbrains.annotations.Nullable;
  * other mods is planned for P4; for now this registry is client internal.
  */
 public final class HuiWindowTypes {
+    /** Survival player inventory (full vanilla inventory screen). */
     public static final Identifier INVENTORY = Identifier.fromNamespaceAndPath(HuiMod.MOD_ID, "inventory");
+    /** Creative inventory (vanilla creative screen with its tab rows). */
+    public static final Identifier CREATIVE = Identifier.fromNamespaceAndPath(HuiMod.MOD_ID, "creative_inventory");
+    /** The cropped default inventory: only the 27 storage slots and the hotbar row. */
+    public static final Identifier DEFAULT_INVENTORY =
+            Identifier.fromNamespaceAndPath(HuiMod.MOD_ID, "default_inventory");
     public static final Identifier DEMO = Identifier.fromNamespaceAndPath(HuiMod.MOD_ID, "demo");
     public static final Identifier PROPERTIES = Identifier.fromNamespaceAndPath(HuiMod.MOD_ID, "properties");
+
+    /** All types that count as "the inventory window" of a page; only one of them may be open per page. */
+    private static final Set<Identifier> INVENTORY_TYPES = Set.of(INVENTORY, CREATIVE, DEFAULT_INVENTORY);
 
     private static final Map<Identifier, WindowType> TYPES = new LinkedHashMap<>();
 
     static {
         register(new WindowType(INVENTORY, "hui.window.inventory", () -> {
-            Minecraft minecraft = Minecraft.getInstance();
-            if (minecraft.player == null) {
-                return new TextWindowContent(List.of(Component.translatable("hui.window.unavailable")), 176, 24);
+            Player player = Minecraft.getInstance().player;
+            if (player == null) {
+                return unavailable();
             }
-            return new EmbeddedScreenContent(minecraft.player);
+            if (player.hasInfiniteMaterials()) {
+                return notAvailableHere();
+            }
+            return EmbeddedScreenContent.survival(player);
+        }));
+        register(new WindowType(CREATIVE, "hui.window.creative_inventory", () -> {
+            LocalPlayer player = Minecraft.getInstance().player;
+            if (player == null) {
+                return unavailable();
+            }
+            if (!player.hasInfiniteMaterials()) {
+                return notAvailableHere();
+            }
+            return EmbeddedScreenContent.creative(player);
+        }));
+        register(new WindowType(DEFAULT_INVENTORY, "hui.window.default_inventory", () -> {
+            Player player = Minecraft.getInstance().player;
+            if (player == null) {
+                return unavailable();
+            }
+            if (player.hasInfiniteMaterials()) {
+                return notAvailableHere();
+            }
+            return EmbeddedScreenContent.croppedInventory(player);
         }));
         register(new WindowType(DEMO, "hui.window.demo", TextWindowContent::demo));
         register(new WindowType(PROPERTIES, "hui.window.properties",
@@ -49,5 +84,24 @@ public final class HuiWindowTypes {
 
     public static Collection<WindowType> all() {
         return List.copyOf(TYPES.values());
+    }
+
+    /** @return true when the type is one of the inventory window kinds (survival, creative, default). */
+    public static boolean isInventoryType(Identifier id) {
+        return INVENTORY_TYPES.contains(id);
+    }
+
+    /** The inventory window type that matches the current game mode. */
+    public static Identifier inventoryTypeForCurrentGameMode() {
+        Player player = Minecraft.getInstance().player;
+        return player != null && player.hasInfiniteMaterials() ? CREATIVE : INVENTORY;
+    }
+
+    private static WindowContent unavailable() {
+        return new TextWindowContent(List.of(Component.translatable("hui.window.unavailable")), 176, 24);
+    }
+
+    private static WindowContent notAvailableHere() {
+        return new TextWindowContent(List.of(Component.translatable("hui.window.inventory_unavailable")), 220, 24);
     }
 }

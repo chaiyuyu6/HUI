@@ -11,6 +11,8 @@ import com.chai.hui.client.ui.ContextMenu;
 import com.mojang.blaze3d.platform.InputConstants;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.client.input.CharacterEvent;
+import net.minecraft.client.input.KeyEvent;
 import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
@@ -42,7 +44,7 @@ public final class HuiDesktopScreen extends Screen {
     private static final int TAB_COLOR = 0x40FFFFFF;
     private static final int TAB_ACTIVE_COLOR = 0xFF3FC7FF;
 
-    private final boolean openInventoryWindow;
+    private final @Nullable Identifier requestedInventoryType;
 
     private DesktopLayout layout = DesktopLayout.createDefault();
     private final List<HuiWindow> windows = new ArrayList<>();
@@ -56,19 +58,24 @@ public final class HuiDesktopScreen extends Screen {
     private double dragOffsetY;
     private @Nullable ContextMenu menu;
 
-    private HuiDesktopScreen(boolean openInventoryWindow) {
+    private HuiDesktopScreen(@Nullable Identifier requestedInventoryType) {
         super(Component.translatable("hui.desktop.title"));
-        this.openInventoryWindow = openInventoryWindow;
+        this.requestedInventoryType = requestedInventoryType;
     }
 
-    /** Opens the desktop and makes sure the current page has an inventory window (used by the inventory key). */
+    /** Opens the desktop and makes sure the current page has an inventory window matching the game mode. */
     public static HuiDesktopScreen openWithInventory() {
-        return new HuiDesktopScreen(true);
+        return new HuiDesktopScreen(HuiWindowTypes.inventoryTypeForCurrentGameMode());
+    }
+
+    /** Opens the desktop with the given inventory window type (e.g. the creative inventory). */
+    public static HuiDesktopScreen openWithType(Identifier type) {
+        return new HuiDesktopScreen(type);
     }
 
     /** Opens the desktop restoring the pinned windows only (used by the F8 shortcut). */
     public static HuiDesktopScreen openWithoutInventory() {
-        return new HuiDesktopScreen(false);
+        return new HuiDesktopScreen(null);
     }
 
     // --- Layout loading / page building ----------------------------------------------------
@@ -80,8 +87,8 @@ public final class HuiDesktopScreen extends Screen {
             this.layout.ensurePages();
             rebuildActivePage();
             this.built = true;
-            if (this.openInventoryWindow) {
-                ensureInventoryWindow();
+            if (this.requestedInventoryType != null) {
+                ensureInventoryWindow(this.requestedInventoryType);
             }
         }
         clampAllWindows();
@@ -213,13 +220,13 @@ public final class HuiDesktopScreen extends Screen {
 
     // --- Window operations -----------------------------------------------------------------
 
-    private void ensureInventoryWindow() {
+    private void ensureInventoryWindow(Identifier type) {
         for (HuiWindow window : new ArrayList<>(this.windows)) {
-            if (window.typeId().equals(HuiWindowTypes.INVENTORY)) {
+            if (HuiWindowTypes.isInventoryType(window.typeId())) {
                 closeWindow(window);
             }
         }
-        addWindow(HuiWindowTypes.INVENTORY);
+        addWindow(type);
     }
 
     private @Nullable HuiWindow addWindow(Identifier typeId) {
@@ -456,6 +463,41 @@ public final class HuiDesktopScreen extends Screen {
         return false;
     }
 
+    @Override
+    public boolean mouseScrolled(double mouseX, double mouseY, double scrollX, double scrollY) {
+        for (int index = this.windows.size() - 1; index >= 0; index--) {
+            HuiWindow window = this.windows.get(index);
+            if (!window.minimized() && window.contains(mouseX, mouseY)) {
+                return window.content().mouseScrolled(mouseX, mouseY, scrollX, scrollY, window.contentX(),
+                        window.contentY());
+            }
+        }
+        return super.mouseScrolled(mouseX, mouseY, scrollX, scrollY);
+    }
+
+    @Override
+    public boolean keyPressed(KeyEvent event) {
+        if (this.menu != null && event.key() == InputConstants.KEY_ESCAPE) {
+            this.menu = null;
+            return true;
+        }
+        // Screen handles ESC (close desktop) and other desktop level keys first.
+        if (super.keyPressed(event)) {
+            return true;
+        }
+        HuiWindow window = this.focused;
+        if (window != null && !window.minimized()) {
+            return window.content().keyPressed(event);
+        }
+        return false;
+    }
+
+    @Override
+    public boolean charTyped(CharacterEvent event) {
+        HuiWindow window = this.focused;
+        return window != null && !window.minimized() && window.content().charTyped(event);
+    }
+
     // --- Menus -----------------------------------------------------------------------------
 
     private void openMainMenu(double mouseX, double mouseY) {
@@ -464,7 +506,10 @@ public final class HuiDesktopScreen extends Screen {
         entries.add(ContextMenu.Entry.of("hui.menu.window_manager", this::openWindowManager));
         entries.add(ContextMenu.Entry.of("hui.menu.new_page", this::addPage));
         entries.add(ContextMenu.Entry.of("hui.menu.demo_window", () -> addWindow(HuiWindowTypes.DEMO)));
-        entries.add(ContextMenu.Entry.of("hui.menu.open_inventory", this::ensureInventoryWindow));
+        entries.add(ContextMenu.Entry.of("hui.menu.open_inventory",
+                () -> ensureInventoryWindow(HuiWindowTypes.inventoryTypeForCurrentGameMode())));
+        entries.add(ContextMenu.Entry.of("hui.menu.open_default_inventory",
+                () -> ensureInventoryWindow(HuiWindowTypes.DEFAULT_INVENTORY)));
         entries.add(new ContextMenu.Entry(
                 Component.translatable("hui.menu.toggle_inventory", onOff(this.layout.huiInventory)),
                 this::toggleHuiInventory, true));

@@ -1,14 +1,15 @@
 package com.chai.hui.client.windowing;
 
 import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.client.input.CharacterEvent;
+import net.minecraft.client.input.KeyEvent;
 import net.minecraft.client.input.MouseButtonEvent;
 
 /**
  * The content of a window. Implementations own their rendering and input handling; the desktop only positions the
  * window and forwards events with the content origin so the content never has to know where the window is.
  *
- * <p>This is the prototype version of the API described in {@code docs/windowing-design.md}; the final version will add
- * layout helpers and a widget tree on top of it.
+ * <p>Mouse coordinates are desktop coordinates: content implementations translate them into their own space.
  */
 public interface WindowContent {
     /** Preferred content width in GUI pixels. */
@@ -31,6 +32,19 @@ public interface WindowContent {
     }
 
     default boolean mouseReleased(MouseButtonEvent event, int originX, int originY) {
+        return false;
+    }
+
+    default boolean mouseScrolled(double mouseX, double mouseY, double scrollX, double scrollY, int originX,
+            int originY) {
+        return false;
+    }
+
+    default boolean keyPressed(KeyEvent event) {
+        return false;
+    }
+
+    default boolean charTyped(CharacterEvent event) {
         return false;
     }
 
