@@ -36,6 +36,13 @@ public final class HuiKeyMappings {
             InputConstants.KEY_K,
             CATEGORY);
 
+    /** Opens the HUI desktop (windowing prototype). Default: {@code F8}. */
+    public static final KeyMapping OPEN_DESKTOP = new KeyMapping(
+            "key.hui.open_desktop",
+            KeyConflictContext.IN_GAME,
+            InputConstants.Type.KEYBOARD,
+            InputConstants.KEY_F8,
+            CATEGORY);
     /** Opens the HUD layout editor. Default: {@code Alt + H}. */
     public static final KeyMapping EDIT_HUD = new KeyMapping(
             "key.hui.edit_hud",

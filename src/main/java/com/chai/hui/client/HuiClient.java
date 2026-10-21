@@ -7,6 +7,7 @@ import com.chai.hui.client.hud.HuiHudLayer;
 import com.chai.hui.client.hud.editor.HudEditorScreen;
 import com.chai.hui.client.screen.HuiConfigScreen;
 import com.chai.hui.client.screen.HuiScreens;
+import com.chai.hui.client.windowing.HuiDesktopScreen;
 import net.minecraft.client.Minecraft;
 import net.minecraft.resources.Identifier;
 import net.neoforged.api.distmarker.Dist;
@@ -65,6 +66,7 @@ public final class HuiClient {
         event.register(HuiKeyMappings.TOGGLE_HUD);
         event.register(HuiKeyMappings.OPEN_SETTINGS);
         event.register(HuiKeyMappings.EDIT_HUD);
+        event.register(HuiKeyMappings.OPEN_DESKTOP);
     }
 
     private void onClientTick(ClientTickEvent.Post event) {
@@ -84,6 +86,11 @@ public final class HuiClient {
             }
         }
 
+        while (HuiKeyMappings.OPEN_DESKTOP.consumeClick()) {
+            if (minecraft.gui.screen() == null && minecraft.player != null) {
+                HuiScreens.open(minecraft, new HuiDesktopScreen());
+            }
+        }
         while (HuiKeyMappings.EDIT_HUD.consumeClick()) {
             if (minecraft.gui.screen() == null && minecraft.player != null && !HudLayoutManager.get().isEditing()) {
                 HuiScreens.open(minecraft, new HudEditorScreen());

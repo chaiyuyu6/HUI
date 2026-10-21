@@ -31,6 +31,7 @@
   "key.hui.toggle_hud": "Toggle HUD panel",
   "key.hui.open_settings": "Open HUI settings",
   "key.hui.edit_hud": "Edit HUD layout",
+  "key.hui.open_desktop": "Open HUI desktop (prototype)",
 
   "hui.block.health": "Health",
   "hui.block.experience": "Experience",
@@ -60,5 +61,8 @@
   "hui.block.hui.info_hud": "HUI panel",
   "hui.block.food": "Hunger",
   "hui.menu.reset_all": "Reset all HUDs",
-  "hui.menu.reset_block": "Reset this HUD"
+  "hui.menu.reset_block": "Reset this HUD",
+  "hui.desktop.title": "HUI Desktop (prototype)",
+  "hui.desktop.hint": "F8 / ESC closes the desktop - drag the window title bar to move it",
+  "hui.window.inventory": "Inventory"
 }

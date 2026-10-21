@@ -31,6 +31,7 @@
   "key.hui.toggle_hud": "切换 HUD 信息面板",
   "key.hui.open_settings": "打开 HUI 设置界面",
   "key.hui.edit_hud": "编辑 HUD 布局",
+  "key.hui.open_desktop": "打开 HUI 桌面（原型）",
 
   "hui.block.health": "生命值",
   "hui.block.experience": "经验值",
@@ -60,5 +61,8 @@
   "hui.block.hui.info_hud": "HUI 信息面板",
   "hui.block.food": "饱食度",
   "hui.menu.reset_all": "重置全部 HUD",
-  "hui.menu.reset_block": "重置该 HUD"
+  "hui.menu.reset_block": "重置该 HUD",
+  "hui.desktop.title": "HUI 桌面（原型）",
+  "hui.desktop.hint": "F8 / ESC 关闭桌面 · 拖动标题栏移动窗口",
+  "hui.window.inventory": "物品栏"
 }
