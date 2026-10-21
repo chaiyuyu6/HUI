@@ -239,7 +239,7 @@ public final class HudEditorScreen extends Screen {
         List<ContextMenu.Entry> entries;
         if (hit != null) {
             boolean hidden = layout.isHidden(hit.id());
-            entries = new ArrayList<>(2);
+            entries = new ArrayList<>(3);
             entries.add(ContextMenu.Entry.of(hidden ? "hui.menu.show" : "hui.menu.hide",
                     () -> layout.setHidden(hit.id(), !hidden)));
             // Auto-detected layers are rendered by NeoForge's own pipeline to keep third-party HUD order intact, so
@@ -248,11 +248,14 @@ public final class HudEditorScreen extends Screen {
                 entries.add(ContextMenu.Entry.of("hui.menu.bring_front",
                         () -> layout.bringToFront(hit.id())));
             }
+            entries.add(ContextMenu.Entry.of("hui.menu.reset_block",
+                    () -> this.manager.resetBlock(layout, hit.id())));
         } else {
-            entries = List.of(
-                    ContextMenu.Entry.of("hui.menu.save_exit", this::saveAndClose),
-                    ContextMenu.Entry.of("hui.menu.cancel", this::cancelAndClose),
-                    ContextMenu.Entry.of("hui.menu.hui_config", this::openHuiConfig));
+            entries = new ArrayList<>(4);
+            entries.add(ContextMenu.Entry.of("hui.menu.save_exit", this::saveAndClose));
+            entries.add(ContextMenu.Entry.of("hui.menu.cancel", this::cancelAndClose));
+            entries.add(ContextMenu.Entry.of("hui.menu.reset_all", () -> this.manager.resetAll(layout)));
+            entries.add(ContextMenu.Entry.of("hui.menu.hui_config", this::openHuiConfig));
         }
         this.menu = new ContextMenu(this.font, (int) mouseX, (int) mouseY, this.width, this.height, entries);
     }

@@ -56,5 +56,8 @@
   "hui.block.minecraft.subtitle_overlay": "字幕",
   "hui.block.minecraft.overlay_message": "动作栏",
   "hui.block.minecraft.spectator_tooltip": "旁观者提示",
-  "hui.block.minecraft.title": "标题"
+  "hui.block.minecraft.title": "标题",
+  "hui.block.hui.info_hud": "HUI 信息面板",
+  "hui.menu.reset_all": "重置全部 HUD",
+  "hui.menu.reset_block": "重置该 HUD"
 }

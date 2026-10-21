@@ -83,6 +83,25 @@ public final class HudLayout {
         entry(id).order = highest + 1;
     }
 
+    /** Restores the default state (no offset, visible, original order) for every given block. */
+    public void resetAll(Collection<Identifier> ids) {
+        int order = 0;
+        for (Identifier id : ids) {
+            Entry entry = entry(id);
+            entry.offsetX = 0;
+            entry.offsetY = 0;
+            entry.hidden = false;
+            entry.order = order++;
+        }
+    }
+
+    /** Restores the default offset and visibility of a single block; the draw order is left untouched. */
+    public void reset(Identifier id) {
+        Entry entry = entry(id);
+        entry.offsetX = 0;
+        entry.offsetY = 0;
+        entry.hidden = false;
+    }
     /** @return the given block ids sorted by their configured draw order (first = bottom). */
     public List<Identifier> ordered(Collection<Identifier> knownIds) {
         List<Identifier> ordered = new ArrayList<>(knownIds);

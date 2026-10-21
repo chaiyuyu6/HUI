@@ -113,7 +113,7 @@ public final class HudLayoutManager {
 
         // --- Everything else that is registered at this point (vanilla leftovers and other mods' HUD layers) --
         for (Identifier id : HudLayerDiscovery.discover(event)) {
-            if (this.capturedLayers.containsKey(id) || HuiMod.MOD_ID.equals(id.getNamespace())) {
+            if (this.capturedLayers.containsKey(id) || ROOT_LAYER.equals(id)) {
                 continue;
             }
             captureAutoBlock(event, id);
@@ -264,6 +264,15 @@ public final class HudLayoutManager {
     /** Throws the working layout away. */
     public void cancel() {
         this.working = null;
+    }
+    /** Resets every block to its default offset, visibility and order (working copy only while editing). */
+    public void resetAll(HudLayout layout) {
+        layout.resetAll(this.blocks.keySet());
+    }
+
+    /** Resets one block to its default offset and visibility (working copy only while editing). */
+    public void resetBlock(HudLayout layout, Identifier id) {
+        layout.reset(id);
     }
 
     public boolean isEditing() {

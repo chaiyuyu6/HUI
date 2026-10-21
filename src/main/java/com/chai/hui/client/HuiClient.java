@@ -43,10 +43,11 @@ public final class HuiClient {
     }
 
     private void registerGuiLayers(RegisterGuiLayersEvent event) {
+        // Register the HUI panel first: the layout manager auto-detects every layer that exists at this point, so the
+        // panel becomes a regular movable block in the editor instead of a special case.
+        event.registerAboveAll(HUD_LAYER_ID, new HuiHudLayer());
         // Takes ownership of the vanilla HUD layers that can be re-arranged by the editor.
         HudLayoutManager.get().initialize(event);
-        // The HUI information panel is an independent, optional layer; registered last so it draws on top.
-        event.registerAboveAll(HUD_LAYER_ID, new HuiHudLayer());
     }
 
     private void registerKeyMappings(RegisterKeyMappingsEvent event) {
