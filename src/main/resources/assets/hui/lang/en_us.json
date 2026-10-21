@@ -35,6 +35,9 @@
   "hui.block.health": "Health",
   "hui.block.experience": "Experience",
   "hui.block.effects": "Potion effects",
+  "hui.block.hotbar": "Hotbar",
+  "hui.block.chat": "Chat",
+  "hui.block.scoreboard": "Scoreboard",
 
   "hui.editor.title": "HUD Editor",
   "hui.editor.hint": "Right-click empty space for more",

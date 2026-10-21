@@ -35,6 +35,9 @@
   "hui.block.health": "生命值",
   "hui.block.experience": "经验值",
   "hui.block.effects": "药水效果",
+  "hui.block.hotbar": "快捷栏",
+  "hui.block.chat": "聊天栏",
+  "hui.block.scoreboard": "计分板",
 
   "hui.editor.title": "HUD 布局编辑",
   "hui.editor.hint": "空白处点击右键显示更多",

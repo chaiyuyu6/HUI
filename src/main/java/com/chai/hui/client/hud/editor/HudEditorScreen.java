@@ -32,7 +32,8 @@ import org.jetbrains.annotations.Nullable;
  */
 public final class HudEditorScreen extends Screen {
     private static final int BACKGROUND = 0xB0000000;
-    private static final int FRAME = 0x80FFFFFF;
+    /** Idle outline of a block; kept subtle because some blocks (chat) cover a large part of the screen. */
+    private static final int FRAME = 0x50FFFFFF;
     private static final int FRAME_HOVER = 0xFFFFFFFF;
     private static final int ACCENT = 0xFF3FC7FF;
     private static final int HIDDEN_OVERLAY = 0x99000000;

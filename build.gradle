@@ -62,6 +62,10 @@ neoForge {
             if (project.hasProperty('quickPlay')) {
                 programArguments.addAll '--quickPlaySingleplayer', project.property('quickPlay')
             }
+            // 调试用：`gradlew runClient -PquickPlayMultiplayer=<地址>` 直接连接指定服务器。
+            if (project.hasProperty('quickPlayMultiplayer')) {
+                programArguments.addAll '--quickPlayMultiplayer', project.property('quickPlayMultiplayer')
+            }
             // Comma-separated list of namespaces to load gametests from. Empty = all namespaces.
             systemProperty 'neoforge.enabledGameTestNamespaces', project.mod_id
         }

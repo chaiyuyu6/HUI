@@ -15,7 +15,7 @@ Minecraft **26.3** / NeoForge **26.3.0.90** 的 GUI / HUD 修改模组。
 | --- | --- |
 | HUD 信息面板 | 以 NeoForge `GuiLayer` 注册（`RegisterGuiLayersEvent`），显示帧率、坐标、维度、生物群系、游戏内天数与时钟 |
 | 面板自定义 | 停靠角落（左上/右上/左下/右下）、偏移量、背景不透明度、强调色、每一行内容的开关 |
-| **HUD 布局编辑器** | `Alt + H` 打开全屏编辑界面：拖拽生命值 / 经验值 / 药水效果三个 HUD 块，右键菜单隐藏、置顶，保存或取消 |
+| **HUD 布局编辑器** | `Alt + H` 打开全屏编辑界面：拖拽生命值 / 经验值 / 药水效果 / 快捷栏 / 聊天栏 / 计分板六个 HUD 块，右键菜单隐藏、置顶，保存或取消 |
 | 自定义设置界面 | `HuiConfigScreen`，26.3 的 `GuiGraphicsExtractor` 提取式渲染 + `pushScreenLayer` 屏幕层 API |
 | 按键绑定 | `H` 切换面板，`K` 打开设置界面，`Alt + H` 打开 HUD 布局编辑器（均可在“控制”里改键） |
 | 配置持久化 | NeoForge CLIENT 配置 `config/hui-client.toml`；HUD 布局单独保存在 `config/hui-hud-layout.json` |
@@ -41,9 +41,12 @@ Minecraft **26.3** / NeoForge **26.3.0.90** 的 GUI / HUD 修改模组。
 `HudLayout` 的顺序绘制：
 
 - 可编辑块：`生命值`（`PLAYER_HEALTH`）、`经验值`（`CONTEXTUAL_INFO_BAR_BACKGROUND` + `EXPERIENCE_LEVEL` +
-  `CONTEXTUAL_INFO_BAR`）、`药水效果`（`EFFECTS`）。
+  `CONTEXTUAL_INFO_BAR`）、`药水效果`（`EFFECTS`）、`快捷栏`（`HOTBAR`）、`聊天栏`（`CHAT`）、
+  `计分板`（`SCOREBOARD_SIDEBAR`）。
 - 伴随层：护甲、饥饿、载具生命、氧气、选中物品名称。原版靠 `Hud#leftHeight/rightHeight` 把这些层向上堆叠，而
   生命值层会在绘制时修改该计数，所以这些层一起被捕获并按原版顺序重放，位置才与原来一致。
+- 聊天栏/计分板的包围框按原版布局参数计算：聊天栏取未聚焦聊天区（受“聊天宽度/高度/缩放”选项影响），计分板按
+  9px 行高、最多 15 行、右侧居中锚点计算，并在没有侧边栏时显示一个小占位框方便拖拽。
 
 代码结构（`client.hud` 包）：
 
@@ -64,7 +67,8 @@ Minecraft **26.3** / NeoForge **26.3.0.90** 的 GUI / HUD 修改模组。
 - 屏幕通过 NeoForge 的 `Gui#pushScreenLayer` 打开；它不像 `Gui#setScreen` 那样释放鼠标抓取，所以 `HuiScreens` 里补了
   `mouseHandler.releaseMouse()` / `resyncMousePosition()`，否则打开界面后视角会跟着鼠标转。
 - 已知限制：药水效果的包围框按“每行 5 列、24px 图标 + 1px 间隔”估算，效果数量变化时选择框会自动重算；生命值块
-  的包围框按单行红心（`81x9`）计算，吸收伤害导致多行红心时选择框会略小于实际绘制范围。
+  的包围框按单行红心（`81x9`）计算，吸收伤害导致多行红心时选择框会略小于实际绘制范围；快捷栏包围框为
+  `182x22`，不含副手槽；聊天栏包围框是“可编辑区域”（最大聊天高度），消息较少时实际绘制区域会小于选择框。
 
 ## 构建
 
@@ -91,7 +95,10 @@ cd E:\NewJorney\HUI
 | Java | 25 |
 
 在 IDE 中打开后，可用 `gradlew runClient` 启动开发客户端。
-调试 HUD 布局时可以直接进入某个存档：`.\gradlew.bat runClient -PquickPlay=<存档名>`。
+调试 HUD 布局时可以直接进入某个存档：`.\gradlew.bat runClient -PquickPlay=<存档名>`，或直连本地服务器：
+`.\gradlew.bat runClient -PquickPlayMultiplayer=localhost:25565`。`tools/rcon.py` 是一个极简 RCON 客户端，
+用于给本地测试服务器发指令（例如准备计分板数据）：
+`python tools/rcon.py 25575 <密码> "scoreboard objectives add test dummy" ...`。
 
 ## 关键类
 
