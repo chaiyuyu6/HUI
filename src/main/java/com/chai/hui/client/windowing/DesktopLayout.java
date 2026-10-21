@@ -74,6 +74,9 @@ public final class DesktopLayout {
         public int height;
         public boolean minimized;
         public boolean pinned;
+        /** Block entity windows: packed BlockPos and dimension id, empty/0 for other window types. */
+        public long pos;
+        public String dimension = "";
 
         public static WindowLayout of(Identifier type) {
             WindowLayout layout = new WindowLayout();

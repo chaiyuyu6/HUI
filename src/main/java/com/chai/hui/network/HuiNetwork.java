@@ -10,7 +10,6 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.MenuProvider;
 import net.minecraft.world.inventory.AbstractContainerMenu;
-import net.minecraft.world.level.block.entity.BlockEntity;
 import net.neoforged.neoforge.network.PacketDistributor;
 import net.neoforged.neoforge.network.event.RegisterPayloadHandlersEvent;
 import net.neoforged.neoforge.network.handling.IPayloadContext;
@@ -35,6 +34,8 @@ public final class HuiNetwork {
         registrar.playToServer(CloseMenuPayload.TYPE, CloseMenuPayload.STREAM_CODEC, HuiNetwork::handleCloseMenu);
         registrar.playToClient(CloseMenuClientPayload.TYPE, CloseMenuClientPayload.STREAM_CODEC,
                 com.chai.hui.client.network.HuiClientPayloads::onMenuClosed);
+        registrar.playToClient(OpenBlockEntityResultPayload.TYPE, OpenBlockEntityResultPayload.STREAM_CODEC,
+                com.chai.hui.client.network.HuiClientPayloads::onOpenResult);
     }
 
     private static void handleOpenBlockEntity(OpenBlockEntityPayload payload, IPayloadContext context) {
@@ -46,11 +47,13 @@ public final class HuiNetwork {
             BlockPos pos = payload.pos();
             if (!level.isLoaded(pos) || !player.isWithinBlockInteractionRange(pos, 1.0D)) {
                 player.sendSystemMessage(Component.translatable("hui.container.unreachable"));
+                PacketDistributor.sendToPlayer(player, new OpenBlockEntityResultPayload(pos, false));
                 return;
             }
-            BlockEntity blockEntity = level.getBlockEntity(pos);
-            if (!(blockEntity instanceof MenuProvider provider)) {
+            MenuProvider provider = level.getBlockState(pos).getMenuProvider(level, pos);
+            if (provider == null) {
                 player.sendSystemMessage(Component.translatable("hui.container.unreachable"));
+                PacketDistributor.sendToPlayer(player, new OpenBlockEntityResultPayload(pos, false));
                 return;
             }
             // Park the current menu without closing it, so vanilla openMenu does not send a close for it. HUI keeps the
@@ -61,6 +64,7 @@ public final class HuiNetwork {
             }
             OptionalInt opened = player.openMenu(provider);
             if (opened.isPresent()) {
+                PacketDistributor.sendToPlayer(player, new OpenBlockEntityResultPayload(pos, true));
                 HuiMenuManager.register(player, opened.getAsInt(), player.containerMenu);
                 HuiMod.LOGGER.debug("Opened container {} ({}) at {}", opened.getAsInt(),
                         player.containerMenu.getType(), pos);
@@ -75,14 +79,19 @@ public final class HuiNetwork {
             if (!(context.player() instanceof ServerPlayer player)) {
                 return;
             }
-            AbstractContainerMenu menu = HuiMenuManager.get(player, payload.containerId());
-            if (menu == null) {
-                return;
-            }
-            if (!menu.stillValid(player)) {
-                HuiMenuManager.closeMenu(player, payload.containerId());
-                PacketDistributor.sendToPlayer(player, new CloseMenuClientPayload(payload.containerId()));
-                return;
+            AbstractContainerMenu menu;
+            if (payload.containerId() == 0) {
+                menu = player.inventoryMenu;
+            } else {
+                menu = HuiMenuManager.get(player, payload.containerId());
+                if (menu == null) {
+                    return;
+                }
+                if (!menu.stillValid(player)) {
+                    HuiMenuManager.closeMenu(player, payload.containerId());
+                    PacketDistributor.sendToPlayer(player, new CloseMenuClientPayload(payload.containerId()));
+                    return;
+                }
             }
             if (player.containerMenu != menu) {
                 // Move the carried stack to the menu that becomes active, so two-click cross-window transfers work

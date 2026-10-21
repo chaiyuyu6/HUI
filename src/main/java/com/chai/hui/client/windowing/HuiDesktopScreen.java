@@ -61,6 +61,8 @@ public final class HuiDesktopScreen extends Screen {
     private double dragOffsetY;
     private @Nullable ContextMenu menu;
     private @Nullable AbstractContainerScreen<?> pendingContainerScreen;
+    private @Nullable net.minecraft.core.BlockPos pendingContainerPos;
+    private final java.util.Map<net.minecraft.core.BlockPos, HuiWindow> pendingRestores = new java.util.HashMap<>();
     private @Nullable EmbeddedScreenContent activeContent;
 
     private HuiDesktopScreen(@Nullable Identifier requestedInventoryType) {
@@ -79,9 +81,10 @@ public final class HuiDesktopScreen extends Screen {
     }
 
     /** Opens a fresh desktop that hosts the given container screen as a window (used after the previous menu closed). */
-    public static HuiDesktopScreen openWithContainer(AbstractContainerScreen<?> screen) {
+    public static HuiDesktopScreen openWithContainer(AbstractContainerScreen<?> screen,
+            @Nullable net.minecraft.core.BlockPos pos) {
         HuiDesktopScreen desktop = new HuiDesktopScreen(null);
-        desktop.queueContainerWindow(screen);
+        desktop.queueContainerWindow(screen, pos);
         return desktop;
     }
 
@@ -91,8 +94,9 @@ public final class HuiDesktopScreen extends Screen {
     }
 
     /** Queues a container screen (chest, furnace, ...) to be added as a window on the next init. */
-    public void queueContainerWindow(AbstractContainerScreen<?> screen) {
+    public void queueContainerWindow(AbstractContainerScreen<?> screen, @Nullable net.minecraft.core.BlockPos pos) {
         this.pendingContainerScreen = screen;
+        this.pendingContainerPos = pos;
     }
 
     // --- Layout loading / page building ----------------------------------------------------
@@ -109,8 +113,9 @@ public final class HuiDesktopScreen extends Screen {
             }
         }
         if (this.pendingContainerScreen != null) {
-            adoptContainerWindow(this.pendingContainerScreen);
+            adoptContainerWindow(this.pendingContainerScreen, this.pendingContainerPos);
             this.pendingContainerScreen = null;
+            this.pendingContainerPos = null;
         }
         clampAllWindows();
         for (HuiWindow window : this.windows) {
@@ -118,18 +123,100 @@ public final class HuiDesktopScreen extends Screen {
         }
     }
 
-    /** Wraps an already opened container screen into an ephemeral window placed in the middle of the desktop. */
-    private void adoptContainerWindow(AbstractContainerScreen<?> screen) {
-        WindowContent content = EmbeddedScreenContent.blockEntity(screen);
+    /**
+     * Wraps an already opened container screen into an ephemeral window and makes sure the page also has an inventory
+     * window next to it (the cropped player inventory or the creative inventory), so items can be moved between the
+     * container and the player without the container window showing the player inventory itself.
+     */
+    private void adoptContainerWindow(AbstractContainerScreen<?> screen,
+            @Nullable net.minecraft.core.BlockPos sourcePos) {
+        WindowContent content = EmbeddedScreenContent.blockEntity(screen, sourcePos);
+        HuiWindow restored = sourcePos == null ? null : this.pendingRestores.remove(sourcePos);
+        if (restored != null) {
+            restored.setContent(content);
+            restored.setTitle(screen.getTitle());
+            clamp(restored);
+            ensureInventoryCompanion();
+            bringToFront(restored);
+            return;
+        }
         HuiWindow window = new HuiWindow(UUID.randomUUID().toString(), HuiWindowTypes.BLOCK_ENTITY, screen.getTitle(),
                 content);
         window.setEphemeral(true);
-        int cascade = this.windows.size() % 6;
-        window.setPosition(Math.max(0, (this.width - window.width()) / 2 - 60 + cascade * 18),
-                Math.max(TAB_TOP + TAB_HEIGHT, (this.height - window.height()) / 2 - 20 + cascade * 18));
+
+        Identifier desiredInventory = this.minecraft != null && this.minecraft.player != null
+                && this.minecraft.player.hasInfiniteMaterials() ? HuiWindowTypes.CREATIVE
+                        : HuiWindowTypes.DEFAULT_INVENTORY;
+        HuiWindow companion = findInventoryWindow();
+        if (companion != null && !companion.typeId().equals(desiredInventory)) {
+            // Block entity windows always pair with the default (cropped) inventory, not the full survival screen.
+            closeWindow(companion);
+            companion = null;
+        }
+        boolean createdCompanion = companion == null;
+        if (companion == null) {
+            companion = addWindow(desiredInventory);
+        }
+
+        int gap = 8;
+        int top = TAB_TOP + TAB_HEIGHT + 4;
+        if (companion != null) {
+            if (createdCompanion) {
+                int totalWidth = window.width() + gap + companion.width();
+                int startX = Math.max(4, (this.width - totalWidth) / 2);
+                int y = Math.max(top, (this.height - Math.max(window.height(), companion.height())) / 2);
+                companion.setPosition(startX + window.width() + gap, y);
+                window.setPosition(startX, y);
+            } else {
+                int x = companion.x() - window.width() - gap;
+                int y = companion.y();
+                if (x < 4) {
+                    x = companion.x() + companion.width() + gap;
+                    if (x + window.width() > this.width - 4) {
+                        x = Math.max(4, (this.width - window.width()) / 2);
+                        y = Math.max(TAB_TOP + TAB_HEIGHT + 4, companion.y() - window.height() - gap);
+                    }
+                }
+                window.setPosition(x, y);
+            }
+        } else {
+            window.setPosition((this.width - window.width()) / 2, (this.height - window.height()) / 2);
+        }
+        clamp(companion);
         clamp(window);
         this.windows.add(window);
         bringToFront(window);
+    }
+
+    private void ensureInventoryCompanion() {
+        Identifier desired = this.minecraft != null && this.minecraft.player != null
+                && this.minecraft.player.hasInfiniteMaterials() ? HuiWindowTypes.CREATIVE
+                        : HuiWindowTypes.DEFAULT_INVENTORY;
+        HuiWindow current = findInventoryWindow();
+        if (current != null && current.typeId().equals(desired)) {
+            return;
+        }
+        if (current != null) {
+            closeWindow(current);
+        }
+        addWindow(desired);
+    }
+
+    /** Removes a restore placeholder whose container could not be opened anymore. */
+    public void dropPendingRestore(net.minecraft.core.BlockPos pos) {
+        HuiWindow placeholder = this.pendingRestores.remove(pos);
+        if (placeholder != null) {
+            closeWindow(placeholder);
+        }
+    }
+
+    private @Nullable HuiWindow findInventoryWindow() {
+        for (HuiWindow window : this.windows) {
+            if (HuiWindowTypes.isInventoryType(window.typeId())) {
+                return window;
+            }
+        }
+        return null;
     }
 
     private void rebuildActivePage() {
@@ -160,6 +247,9 @@ public final class HuiDesktopScreen extends Screen {
             HuiMod.LOGGER.warn("Skipping window with invalid type id '{}'", stored.type);
             return null;
         }
+        if (typeId.equals(HuiWindowTypes.BLOCK_ENTITY)) {
+            return restoreBlockEntityWindow(stored);
+        }
         WindowType type = HuiWindowTypes.get(typeId);
         if (type == null) {
             HuiMod.LOGGER.warn("Skipping window of unknown type {}", typeId);
@@ -175,12 +265,37 @@ public final class HuiDesktopScreen extends Screen {
         return window;
     }
 
+    /**
+     * Restores a pinned container window: the menu itself cannot be restored without the server, so a placeholder window
+     * is created and an open request is queued; when the container screen arrives it replaces the placeholder content.
+     */
+    private @Nullable HuiWindow restoreBlockEntityWindow(DesktopLayout.WindowLayout stored) {
+        if (stored.pos == 0L || this.minecraft == null || this.minecraft.level == null) {
+            return null;
+        }
+        String dimension = this.minecraft.level.dimension().identifier().toString();
+        if (!stored.dimension.isEmpty() && !stored.dimension.equals(dimension)) {
+            return null;
+        }
+        net.minecraft.core.BlockPos pos = net.minecraft.core.BlockPos.of(stored.pos);
+        Component title = Component.translatable("hui.window.block_entity.opening");
+        HuiWindow placeholder = new HuiWindow(stored.id, HuiWindowTypes.BLOCK_ENTITY, title,
+                new TextWindowContent(java.util.List.of(title), Math.max(80, stored.width - 8), 24));
+        placeholder.setBounds(stored.x, stored.y, Math.max(80, stored.width), Math.max(40, stored.height));
+        placeholder.setMinimized(stored.minimized);
+        placeholder.setPinned(stored.pinned);
+        placeholder.setEphemeral(true);
+        this.pendingRestores.put(pos, placeholder);
+        HuiRemoteContainers.request(pos);
+        return placeholder;
+    }
     private void captureActivePage() {
         DesktopLayout.PageLayout page = this.layout.activePage();
         page.windows.clear();
         for (HuiWindow window : this.windows) {
-            if (window.ephemeral()) {
-                // Block entity windows are bound to a live menu; they are not restored from the layout yet.
+            EmbeddedScreenContent embedded = window.content() instanceof EmbeddedScreenContent content ? content : null;
+            boolean restorableBlockEntity = window.ephemeral() && embedded != null && embedded.sourcePos() != null;
+            if (window.ephemeral() && !restorableBlockEntity) {
                 continue;
             }
             DesktopLayout.WindowLayout stored = new DesktopLayout.WindowLayout();
@@ -193,6 +308,11 @@ public final class HuiDesktopScreen extends Screen {
             stored.height = window.height();
             stored.minimized = window.minimized();
             stored.pinned = window.pinned();
+            if (restorableBlockEntity) {
+                stored.pos = embedded.sourcePos().asLong();
+                stored.dimension = this.minecraft == null || this.minecraft.level == null ? ""
+                        : this.minecraft.level.dimension().identifier().toString();
+            }
             page.windows.add(stored);
         }
     }
@@ -275,9 +395,14 @@ public final class HuiDesktopScreen extends Screen {
         }
         HuiWindow window = new HuiWindow(UUID.randomUUID().toString(), typeId,
                 Component.translatable(type.titleKey()), type.createContent());
-        int cascade = this.windows.size() % 6;
-        window.setPosition(Math.max(0, (this.width - window.width()) / 2 - 60 + cascade * 18),
-                Math.max(TAB_HEIGHT + 8, (this.height - window.height()) / 2 - 40 + cascade * 18));
+        if (HuiWindowTypes.isInventoryType(typeId)) {
+            // The inventory window is the "home" window: open it centered instead of cascaded.
+            window.setPosition((this.width - window.width()) / 2, (this.height - window.height()) / 2);
+        } else {
+            int cascade = this.windows.size() % 6;
+            window.setPosition(Math.max(0, (this.width - window.width()) / 2 - 60 + cascade * 18),
+                    Math.max(TAB_HEIGHT + 8, (this.height - window.height()) / 2 - 40 + cascade * 18));
+        }
         clamp(window);
         window.content().init(this.width, this.height);
         this.windows.add(window);
@@ -312,14 +437,19 @@ public final class HuiDesktopScreen extends Screen {
         }
     }
 
-    /** Makes the clicked window the active menu and clears the previous window's stale carried stack. */
+    /**
+     * Makes the clicked window the active menu. The previous window's carried stack is only cleared locally when its
+     * menu is server backed (the server moves the stack during activation); the client-only creative inventory keeps its
+     * carried stack, otherwise the item would disappear when moving the mouse over another window.
+     */
     private void activateContent(EmbeddedScreenContent content) {
-        if (this.activeContent != content && this.activeContent != null) {
+        if (this.activeContent != content && this.activeContent != null && this.activeContent.serverBacked()) {
             this.activeContent.screenMenu().setCarried(net.minecraft.world.item.ItemStack.EMPTY);
         }
         this.activeContent = content;
-        content.activateIfRemote();
+        content.activate();
     }
+
     /** Closes the block entity window whose menu is no longer valid (server side close notification). */
     public void closeBlockEntityWindow(int containerId) {
         for (HuiWindow window : new ArrayList<>(this.windows)) {

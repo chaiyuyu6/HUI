@@ -160,6 +160,12 @@ Minecraft **26.3** / NeoForge **26.3.0.90** 的 GUI / HUD 修改模组。
 
 ![跨窗口搬运后的箱子窗口](docs/windowing-chest-transfer.png)
 
+![方块 UI + 默认物品栏的组合](docs/windowing-container-pair.png)
+
+![创造模式下的组合（容器 + 创造物品栏）](docs/windowing-container-pair-creative.png)
+
+![固定的容器窗口在重开桌面后恢复](docs/windowing-chest-restored.png)
+
 ## 构建
 
 ```powershell

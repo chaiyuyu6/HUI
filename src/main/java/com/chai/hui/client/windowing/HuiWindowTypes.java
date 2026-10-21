@@ -25,7 +25,7 @@ public final class HuiWindowTypes {
     public static final Identifier INVENTORY = Identifier.fromNamespaceAndPath(HuiMod.MOD_ID, "inventory");
     /** Creative inventory (vanilla creative screen with its tab rows). */
     public static final Identifier CREATIVE = Identifier.fromNamespaceAndPath(HuiMod.MOD_ID, "creative_inventory");
-    /** The cropped default inventory: only the 27 storage slots and the hotbar row. */
+    /** The cropped default inventory: only the 27 storage slots and the hotbar row (the HUI inventory window). */
     public static final Identifier DEFAULT_INVENTORY =
             Identifier.fromNamespaceAndPath(HuiMod.MOD_ID, "default_inventory");
     /** Block entity containers opened through the "open" list; ephemeral and not persisted for now. */

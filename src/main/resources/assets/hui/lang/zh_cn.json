@@ -67,6 +67,7 @@
   "hui.window.inventory": "物品栏",
   "hui.window.creative_inventory": "创造物品栏",
   "hui.window.default_inventory": "默认物品栏",
+  "hui.window.block_entity.opening": "打开中…",
   "hui.window.inventory_unavailable": "当前游戏模式下不能使用该物品栏窗口。",
   "hui.page.default_name": "物品栏页面%s",
   "hui.window.title_pinned": "%s（已固定）",

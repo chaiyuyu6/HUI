@@ -67,6 +67,7 @@
   "hui.window.inventory": "Inventory",
   "hui.window.creative_inventory": "Creative inventory",
   "hui.window.default_inventory": "Default inventory",
+  "hui.window.block_entity.opening": "Opening...",
   "hui.window.inventory_unavailable": "This inventory window is not available in the current game mode.",
   "hui.page.default_name": "Inventory Page %s",
   "hui.window.title_pinned": "%s (pinned)",

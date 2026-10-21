@@ -15,7 +15,7 @@ public final class HuiWindow {
 
     private final String uid;
     private final Identifier typeId;
-    private final WindowContent content;
+    private WindowContent content;
     private Component title;
     private int x;
     private int y;
@@ -52,6 +52,12 @@ public final class HuiWindow {
 
     public WindowContent content() {
         return this.content;
+    }
+
+    public void setContent(WindowContent content) {
+        this.content = content;
+        this.width = content.preferredWidth();
+        this.height = content.preferredHeight() + TITLE_HEIGHT;
     }
 
     public int x() {

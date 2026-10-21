@@ -11,7 +11,6 @@ import com.chai.hui.client.windowing.DesktopLayoutStore;
 import com.chai.hui.client.windowing.HuiDesktopScreen;
 import com.chai.hui.client.windowing.HuiRemoteContainers;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import net.minecraft.client.gui.screens.inventory.InventoryScreen;
 import net.minecraft.resources.Identifier;
@@ -121,20 +120,19 @@ public final class HuiClient {
      * left alone.
      */
     private void onScreenOpening(ScreenEvent.Opening event) {
-        // A block entity container was requested from the HUI "open" list: turn the resulting container screen into a
-        // window instead of a full screen.
-        if (HuiRemoteContainers.hasPending() && event.getNewScreen() instanceof AbstractContainerScreen<?> container) {
-            Screen current = event.getCurrentScreen();
-            HuiDesktopScreen desktop;
-            if (current instanceof HuiDesktopScreen existing) {
-                desktop = existing;
-            } else {
-                desktop = HuiDesktopScreen.openWithContainer(container);
+        // A block entity container was requested (from the HUI "open" list or by restoring a pinned window): turn the
+        // resulting container screen into a window instead of a full screen.
+        if (event.getNewScreen() instanceof AbstractContainerScreen<?> container) {
+            net.minecraft.core.BlockPos pos = HuiRemoteContainers.pollOpened();
+            if (pos != null) {
+                if (event.getCurrentScreen() instanceof HuiDesktopScreen desktop) {
+                    desktop.queueContainerWindow(container, pos);
+                    event.setNewScreen(desktop);
+                } else {
+                    event.setNewScreen(HuiDesktopScreen.openWithContainer(container, pos));
+                }
+                return;
             }
-            HuiRemoteContainers.clearPending();
-            desktop.queueContainerWindow(container);
-            event.setNewScreen(desktop);
-            return;
         }
 
         if (event.getCurrentScreen() != null) {

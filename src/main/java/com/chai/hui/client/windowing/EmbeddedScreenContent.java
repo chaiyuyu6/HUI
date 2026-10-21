@@ -64,8 +64,19 @@ public final class EmbeddedScreenContent implements WindowContent {
      * inventory part of the screen is not shown (requirement: "裁掉物品栏" for block entity windows in HUI mode).
      */
     public static EmbeddedScreenContent blockEntity(AbstractContainerScreen<?> screen) {
+        return blockEntity(screen, null);
+    }
+
+    public static EmbeddedScreenContent blockEntity(AbstractContainerScreen<?> screen,
+            net.minecraft.core.BlockPos sourcePos) {
         int[] crop = containerCrop(screen);
-        return new EmbeddedScreenContent(screen, crop[0], crop[1], crop[2], crop[3], null);
+        EmbeddedScreenContent content = new EmbeddedScreenContent(screen, crop[0], crop[1], crop[2], crop[3], null);
+        content.sourcePos = sourcePos;
+        return content;
+    }
+
+    public @Nullable net.minecraft.core.BlockPos sourcePos() {
+        return this.sourcePos;
     }
 
     private static int[] containerCrop(AbstractContainerScreen<?> screen) {
@@ -106,12 +117,14 @@ public final class EmbeddedScreenContent implements WindowContent {
         return this.screen.getMenu().containerId;
     }
 
+    /** @return true when this menu also exists on the server (false for the client-only creative inventory). */
+    public boolean serverBacked() {
+        return this.serverBacked;
+    }
+
     /** Makes this window's menu the active server side menu, so vanilla click packets are routed to it. */
-    public void activateIfRemote() {
+    public void activate() {
         int containerId = menuContainerId();
-        if (containerId == 0) {
-            return;
-        }
         Minecraft minecraft = Minecraft.getInstance();
         ClientPacketDistributor.sendToServer(new ActivateMenuPayload(containerId));
         if (minecraft.player != null) {
@@ -142,7 +155,7 @@ public final class EmbeddedScreenContent implements WindowContent {
         CreativeModeInventoryScreen screen = new CreativeModeInventoryScreen(player,
                 player.connection.enabledFeatures(), Minecraft.getInstance().options.operatorItemsTab().get());
         return new EmbeddedScreenContent(screen, 0, -CREATIVE_TOP_MARGIN, screen.getImageWidth(),
-                screen.getImageHeight() + CREATIVE_TOP_MARGIN + CREATIVE_BOTTOM_MARGIN, null);
+                screen.getImageHeight() + CREATIVE_TOP_MARGIN + CREATIVE_BOTTOM_MARGIN, null, false);
     }
 
     private final AbstractContainerScreen<?> screen;
@@ -151,16 +164,25 @@ public final class EmbeddedScreenContent implements WindowContent {
     private final int srcWidth;
     private final int srcHeight;
     private final @Nullable BackgroundPainter background;
+    /** True when the menu also exists on the server (inventory and block entity menus); creative is client only. */
+    private final boolean serverBacked;
     private boolean initialized;
+    private @Nullable net.minecraft.core.BlockPos sourcePos;
 
     public EmbeddedScreenContent(AbstractContainerScreen<?> screen, int srcX, int srcY, int srcWidth, int srcHeight,
             @Nullable BackgroundPainter background) {
+        this(screen, srcX, srcY, srcWidth, srcHeight, background, true);
+    }
+
+    private EmbeddedScreenContent(AbstractContainerScreen<?> screen, int srcX, int srcY, int srcWidth, int srcHeight,
+            @Nullable BackgroundPainter background, boolean serverBacked) {
         this.screen = screen;
         this.srcX = srcX;
         this.srcY = srcY;
         this.srcWidth = srcWidth;
         this.srcHeight = srcHeight;
         this.background = background;
+        this.serverBacked = serverBacked;
     }
 
     @Override
