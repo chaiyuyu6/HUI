@@ -538,6 +538,16 @@ public final class HuiDesktopScreen extends Screen {
         if (this.menu != null) {
             this.menu.render(graphics, this.font, mouseX, mouseY);
         }
+        // The carried stack and tooltip must be above every window and the context menu.
+        if (this.activeContent != null) {
+            for (HuiWindow window : this.windows) {
+                if (!window.minimized() && window.content() == this.activeContent) {
+                    this.activeContent.extractOverlay(graphics, mouseX, mouseY, partialTick, window.contentX(),
+                            window.contentY());
+                    break;
+                }
+            }
+        }
     }
 
     private void renderWindow(GuiGraphicsExtractor graphics, HuiWindow window, int mouseX, int mouseY,
@@ -647,6 +657,10 @@ public final class HuiDesktopScreen extends Screen {
 
     @Override
     public void mouseMoved(double mouseX, double mouseY) {
+        if (this.contentDragging != null) {
+            // Do not switch the active menu while the player is dragging a stack between windows.
+            return;
+        }
         for (int index = this.windows.size() - 1; index >= 0; index--) {
             HuiWindow window = this.windows.get(index);
             if (!window.minimized() && window.contains(mouseX, mouseY)) {
@@ -681,12 +695,36 @@ public final class HuiDesktopScreen extends Screen {
             return true;
         }
         if (this.contentDragging != null) {
-            HuiWindow window = this.contentDragging;
+            HuiWindow source = this.contentDragging;
             this.contentDragging = null;
-            window.content().mouseReleased(event, window.contentX(), window.contentY());
+            if (source.content() instanceof EmbeddedScreenContent sourceContent
+                    && sourceContent.serverBacked() && !sourceContent.screenMenu().getCarried().isEmpty()) {
+                HuiWindow target = windowAt(event.x(), event.y());
+                if (target != null && target != source && target.content() instanceof EmbeddedScreenContent targetContent) {
+                    net.minecraft.world.item.ItemStack carried = sourceContent.screenMenu().getCarried().copy();
+                    activateContent(targetContent);
+                    if (targetContent.isOverSlot((int) event.x(), (int) event.y(), target.contentX(),
+                            target.contentY())) {
+                        targetContent.screenMenu().setCarried(carried);
+                        targetContent.mouseClicked(event, target.contentX(), target.contentY(), false);
+                    }
+                    return true;
+                }
+            }
+            source.content().mouseReleased(event, source.contentX(), source.contentY());
             return true;
         }
         return false;
+    }
+
+    private @Nullable HuiWindow windowAt(double mouseX, double mouseY) {
+        for (int index = this.windows.size() - 1; index >= 0; index--) {
+            HuiWindow window = this.windows.get(index);
+            if (!window.minimized() && window.contains(mouseX, mouseY)) {
+                return window;
+            }
+        }
+        return null;
     }
 
     @Override

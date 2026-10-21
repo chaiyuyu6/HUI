@@ -138,13 +138,17 @@ public final class HuiClient {
         if (event.getCurrentScreen() != null) {
             return;
         }
-        if (!(event.getNewScreen() instanceof InventoryScreen)) {
-            return;
-        }
         if (!DesktopLayoutStore.isHuiInventoryEnabled()) {
             return;
         }
-        event.setNewScreen(HuiDesktopScreen.openWithInventory());
+        if (event.getNewScreen() instanceof InventoryScreen) {
+            event.setNewScreen(HuiDesktopScreen.openWithInventory());
+            return;
+        }
+        if (event.getNewScreen() instanceof AbstractContainerScreen<?> container) {
+            // Direct block interaction (chest, brewing stand, anvil, ...) in HUI mode: open it as a HUI window too.
+            event.setNewScreen(HuiDesktopScreen.openWithContainer(container, null));
+        }
     }
 
     private void onLoggingOut(ClientPlayerNetworkEvent.LoggingOut event) {

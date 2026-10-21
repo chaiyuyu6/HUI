@@ -180,6 +180,8 @@ Minecraft **26.3** / NeoForge **26.3.0.90** 的 GUI / HUD 修改模组。
 
 ![Ui 控件库示例窗口](docs/windowing-ui-demo.png)
 
+![右键酿造台直接进入 HUI 窗口（酿造台 + 创造物品栏）](docs/windowing-brewing-direct.png)
+
 ![窗口重命名（Ui 文本输入）](docs/windowing-rename.png)
 
 ## 构建

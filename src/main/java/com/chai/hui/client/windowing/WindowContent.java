@@ -23,6 +23,10 @@ public interface WindowContent {
 
     void extract(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick, int originX, int originY);
 
+    /** Drawn after every window, so the carried stack/tooltip is never covered by another window. */
+    default void extractOverlay(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick, int originX,
+            int originY) {}
+
     default boolean mouseClicked(MouseButtonEvent event, int originX, int originY, boolean doubleClick) {
         return false;
     }

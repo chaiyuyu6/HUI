@@ -230,9 +230,27 @@ public final class EmbeddedScreenContent implements WindowContent {
             graphics.disableScissor();
         }
 
-        // Carried stack and tooltip belong to the desktop cursor, not to the window region.
+        // Carried stack and tooltip are drawn in extractOverlay, after all windows, so they stay on top.
+    }
+
+    @Override
+    public void extractOverlay(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick, int originX,
+            int originY) {
         this.screen.extractCarriedItem(graphics, mouseX, mouseY);
         extractTooltip(this.screen, graphics, mouseX, mouseY);
+    }
+
+    /** @return true when the desktop mouse position is over an active slot of this window. */
+    public boolean isOverSlot(int mouseX, int mouseY, int originX, int originY) {
+        int localX = mouseX - this.deltaX(originX);
+        int localY = mouseY - this.deltaY(originY);
+        for (net.minecraft.world.inventory.Slot slot : this.screen.getMenu().slots) {
+            if (slot.isActive() && localX >= slot.x && localX < slot.x + 16 && localY >= slot.y
+                    && localY < slot.y + 16) {
+                return true;
+            }
+        }
+        return false;
     }
 
     @Override
