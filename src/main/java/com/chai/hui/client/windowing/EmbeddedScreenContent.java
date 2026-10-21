@@ -32,7 +32,7 @@ import org.jetbrains.annotations.Nullable;
  *
  * <p>The carried stack and tooltip are drawn outside the scissor at the desktop cursor position.
  */
-public final class EmbeddedScreenContent implements WindowContent {
+public final class EmbeddedScreenContent implements MenuWindowContent {
     private static final Identifier INVENTORY_TEXTURE =
             Identifier.withDefaultNamespace("textures/gui/container/inventory.png");
     private static final int INVENTORY_WIDTH = 176;

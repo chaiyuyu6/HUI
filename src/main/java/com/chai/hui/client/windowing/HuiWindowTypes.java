@@ -47,6 +47,10 @@ public final class HuiWindowTypes {
             if (player.hasInfiniteMaterials()) {
                 return notAvailableHere();
             }
+            if (com.chai.hui.HuiConfig.nativeUi()) {
+                return new VanillaMenuUiContent(player.inventoryMenu,
+                        Component.translatable("hui.window.inventory"), slot -> true, null);
+            }
             return EmbeddedScreenContent.survival(player);
         }));
         register(WindowType.translatable(CREATIVE, "hui.window.creative_inventory", () -> {
@@ -66,6 +70,11 @@ public final class HuiWindowTypes {
             }
             if (player.hasInfiniteMaterials()) {
                 return notAvailableHere();
+            }
+            if (com.chai.hui.HuiConfig.nativeUi()) {
+                return new VanillaMenuUiContent(player.inventoryMenu,
+                        Component.translatable("hui.window.default_inventory"),
+                        slot -> slot.container instanceof net.minecraft.world.entity.player.Inventory, null);
             }
             return EmbeddedScreenContent.croppedInventory(player);
         }));

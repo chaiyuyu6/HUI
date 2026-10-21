@@ -253,3 +253,14 @@ cd E:\NewJorney\HUI
 ## 许可
 
 All Rights Reserved（可在 `gradle.properties` 的 `mod_license` 中修改）。
+
+## HUI UI 转义器（进行中）
+
+- 设计文档：`docs/ui-adapter-design.md`；原版 GUI 机制研究：`docs/vanilla-ui-research.md`；
+  GUI 贴图绘制规范：`docs/gui-texture-spec.md`。
+- 容器/物品栏窗口改为 HUI 自绘 UI（`VanillaMenuUiContent`）：面板、槽位、物品、tooltip、手持物品都是 HUI 绘制，
+  原版 `AbstractContainerScreen` 只作为菜单数据源；点击/拖拽分堆/双击收集/Shift 快速移动/数字键/副手交换/Q 丢弃
+  按原版 `ContainerInput` 序列发送。
+- 配置项 `windowing.nativeUi`（默认 true）：设 false 可回退到旧的「嵌入原版界面」方案。
+- 创造物品栏窗口暂时仍使用嵌入原版界面（页签/搜索尚未转义，属于设计文档阶段 B）。
+- GUI 贴图可选：把 `window/frame.png`、`slot.png` 等放进 `assets/hui/textures/gui/sprites/` 即自动生效，缺失时回退纯色。
