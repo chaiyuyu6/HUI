@@ -15,7 +15,7 @@ Minecraft **26.3** / NeoForge **26.3.0.90** 的 GUI / HUD 修改模组。
 | --- | --- |
 | HUD 信息面板 | 以 NeoForge `GuiLayer` 注册（`RegisterGuiLayersEvent`），显示帧率、坐标、维度、生物群系、游戏内天数与时钟 |
 | 面板自定义 | 停靠角落（左上/右上/左下/右下）、偏移量、背景不透明度、强调色、每一行内容的开关 |
-| **HUD 布局编辑器** | `Alt + H` 打开全屏编辑界面：拖拽生命值 / 经验值 / 药水效果 / 快捷栏 / 聊天栏 / 计分板六个 HUD 块，右键菜单隐藏、置顶，保存或取消 |
+| **HUD 布局编辑器** | `Alt + H` 打开全屏编辑界面：拖拽生命值 / 经验值 / 药水效果 / 快捷栏 / 聊天栏 / 计分板 / 饱食度七个 HUD 块，右键菜单隐藏、置顶，保存或取消 |
 | **HUD 自动检测** | 自动发现所有已注册的 HUD 层（含其他 mod 的），试渲染测量屏幕包围盒后纳入编辑器，支持移动和隐藏 |
 | 自定义设置界面 | `HuiConfigScreen`，26.3 的 `GuiGraphicsExtractor` 提取式渲染 + `pushScreenLayer` 屏幕层 API |
 | 按键绑定 | `H` 切换面板，`K` 打开设置界面，`Alt + H` 打开 HUD 布局编辑器（均可在“控制”里改键） |
@@ -36,6 +36,8 @@ Minecraft **26.3** / NeoForge **26.3.0.90** 的 GUI / HUD 修改模组。
 
 ![HUD 编辑器：可编辑块（含 HUI 信息面板）](docs/hud-editor.png)
 
+![可编辑的饱食度块（拖动后游戏内同步移动）](docs/hud-hunger.png)
+
 ![主菜单里的“重置全部 HUD”](docs/hud-menu-reset.png)
 
 ![HUI 设置界面（可从编辑器菜单打开）](docs/hui-settings.png)
@@ -53,6 +55,9 @@ Minecraft **26.3** / NeoForge **26.3.0.90** 的 GUI / HUD 修改模组。
   生命值层会在绘制时修改该计数，所以这些层一起被捕获并按原版顺序重放，位置才与原来一致。
 - 聊天栏/计分板的包围框按原版布局参数计算：聊天栏取未聚焦聊天区（受“聊天宽度/高度/缩放”选项影响），计分板按
   9px 行高、最多 15 行、右侧居中锚点计算，并在没有侧边栏时显示一个小占位框方便拖拽。
+- `饱食度`（`FOOD_LEVEL`）用另一种方式处理：它仍留在 NeoForge 的层管线里，偏移通过在 `RenderGuiLayerEvent.Pre/Post`
+  里压入/弹出矩阵实现，这样其他 mod 在这一层前后绘制的装饰（典型是 AppleSkin 的饱和度/饥饿覆盖）会跟着一起移动和隐藏。
+  它因此不支持“置顶”（保持原版绘制顺序）。
 - 自动检测：HUI 以 `EventPriority.LOWEST` 监听 `RegisterGuiLayersEvent`，此时其他 mod 的 HUD 层都已注册。HUI 通过
   反射读取事件内部携带的层列表，对不认识的层逐个 `wrapLayer` 包装成“可移动层”；包围盒则把该层试渲染到临时
   的 `GuiRenderState` 中，读取它产生的 text / item / blit / 自定义元素的 bounds，因此其他 mod 的 HUD 不需要单独
@@ -73,6 +78,7 @@ Minecraft **26.3** / NeoForge **26.3.0.90** 的 GUI / HUD 修改模组。
 | 类型 | 职责 |
 | --- | --- |
 | `HudBlock` / `SimpleHudBlock` / `HealthHudBlock` | HUD 块的抽象与实现：默认位置 + 偏移渲染 |
+| `InPlaceHudBlock` | 仍需留在 NeoForge 层管线里的块（饱食度），偏移由渲染事件控制 |
 | `HudRect` | GUI 坐标矩形，用于命中检测和选择框 |
 | `HudLayout` | 布局状态（每块的偏移、隐藏、绘制顺序），带工作副本语义 |
 | `HudLayoutStore` | 布局的 JSON 读写（`config/hui-hud-layout.json`） |
@@ -88,6 +94,8 @@ Minecraft **26.3** / NeoForge **26.3.0.90** 的 GUI / HUD 修改模组。
   覆盖层（暗角、睡眠/演示覆盖层）会自动跳过，不会在编辑器里出现巨大选择框。
 - 自动检测的标签使用翻译键 `hui.block.<命名空间>.<路径>`（如 `hui.block.minecraft.crosshair`），缺失时回退显示层
   id，其他 mod 可以自行补充翻译。
+- AppleSkin 兼容：命名空间为 `appleskin:` 的自动检测层会自动跟随饱食度块（隐藏/移动一起），不会单独出现在编辑器里；
+  如果 AppleSkin 是通过食物层的 `RenderGuiLayerEvent` 绘制，HUI 的矩阵压栈/弹栈同样会把它们一起带走。
 - 自动检测依赖反射读取 NeoForge 事件携带的层列表；如果未来 NeoForge 改了内部结构，会记录一条警告并退回内置 6 块，
   不影响游戏加载和其余功能。
 - 屏幕通过 NeoForge 的 `Gui#pushScreenLayer` 打开；它不像 `Gui#setScreen` 那样释放鼠标抓取，所以 `HuiScreens` 里补了

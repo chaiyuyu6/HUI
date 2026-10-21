@@ -17,6 +17,8 @@ import net.neoforged.fml.common.Mod;
 import net.neoforged.neoforge.client.event.ClientTickEvent;
 import net.neoforged.neoforge.client.event.RegisterGuiLayersEvent;
 import net.neoforged.neoforge.client.event.RegisterKeyMappingsEvent;
+import net.neoforged.neoforge.client.event.RenderGuiEvent;
+import net.neoforged.neoforge.client.event.RenderGuiLayerEvent;
 import net.neoforged.neoforge.client.gui.IConfigScreenFactory;
 import net.neoforged.neoforge.common.NeoForge;
 
@@ -36,6 +38,14 @@ public final class HuiClient {
         modEventBus.addListener(EventPriority.LOWEST, this::registerGuiLayers);
         modEventBus.addListener(this::registerKeyMappings);
         NeoForge.EVENT_BUS.addListener(this::onClientTick);
+        // In-place HUD layers (hunger) are translated by pushing/popping the pose around the layer render, so
+        // decorations other mods draw after that layer (e.g. AppleSkin) move together with it.
+        NeoForge.EVENT_BUS.addListener(EventPriority.HIGHEST, RenderGuiLayerEvent.Pre.class,
+                HudLayoutManager.get()::onLayerPre);
+        NeoForge.EVENT_BUS.addListener(EventPriority.LOWEST, RenderGuiLayerEvent.Post.class,
+                HudLayoutManager.get()::onLayerPost);
+        // Safety net in case a layer render was cancelled between push and pop.
+        NeoForge.EVENT_BUS.addListener(RenderGuiEvent.Post.class, HudLayoutManager.get()::onGuiPost);
 
         // Lets the "Config" button in the Mods menu open the HUI settings screen.
         modContainer.registerExtensionPoint(IConfigScreenFactory.class,

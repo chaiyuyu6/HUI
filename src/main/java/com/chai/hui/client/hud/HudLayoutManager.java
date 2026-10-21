@@ -2,9 +2,11 @@ package com.chai.hui.client.hud;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import com.chai.hui.HuiMod;
 import net.minecraft.client.DeltaTracker;
@@ -23,6 +25,8 @@ import net.minecraft.world.scores.PlayerScoreEntry;
 import net.minecraft.world.scores.PlayerTeam;
 import net.minecraft.world.scores.Scoreboard;
 import net.neoforged.neoforge.client.event.RegisterGuiLayersEvent;
+import net.neoforged.neoforge.client.event.RenderGuiEvent;
+import net.neoforged.neoforge.client.event.RenderGuiLayerEvent;
 import net.neoforged.neoforge.client.gui.GuiLayer;
 import net.neoforged.neoforge.client.gui.VanillaGuiLayers;
 
@@ -49,6 +53,7 @@ public final class HudLayoutManager {
     public static final Identifier HOTBAR = Identifier.fromNamespaceAndPath(HuiMod.MOD_ID, "hotbar");
     public static final Identifier CHAT = Identifier.fromNamespaceAndPath(HuiMod.MOD_ID, "chat");
     public static final Identifier SCOREBOARD = Identifier.fromNamespaceAndPath(HuiMod.MOD_ID, "scoreboard");
+    public static final Identifier FOOD = Identifier.fromNamespaceAndPath(HuiMod.MOD_ID, "food");
 
     /** Id of the root layer HUI registers above everything else. */
     public static final Identifier ROOT_LAYER = Identifier.fromNamespaceAndPath(HuiMod.MOD_ID, "hud_layout");
@@ -61,6 +66,14 @@ public final class HudLayoutManager {
 
     private final Map<Identifier, GuiLayer> capturedLayers = new LinkedHashMap<>();
     private final Map<Identifier, HudBlock> blocks = new LinkedHashMap<>();
+    /** Layers rendered in place (with the offset applied through RenderGuiLayerEvent), keyed by layer id. */
+    private final Map<Identifier, GuiLayer> inPlaceLayers = new LinkedHashMap<>();
+    /** Maps an in-place layer id to the layout block it belongs to (e.g. minecraft:food_level -> hui:food). */
+    private final Map<Identifier, Identifier> inPlaceTargets = new LinkedHashMap<>();
+    /** Auto-detected layers that should follow a block instead of being shown separately (e.g. AppleSkin overlays). */
+    private final Map<Identifier, Identifier> followerTargets = new LinkedHashMap<>();
+    /** Layers whose matrix push has not been popped yet, per frame. */
+    private final Set<Identifier> pushedLayers = new HashSet<>();
 
     private HudLayout active = new HudLayout();
     private HudLayout working;
@@ -80,7 +93,7 @@ public final class HudLayoutManager {
         // --- Vanilla layers HUI knows by name and renders itself (so they can be reordered) -------------------
         capture(event, VanillaGuiLayers.PLAYER_HEALTH);
         capture(event, VanillaGuiLayers.ARMOR_LEVEL);
-        capture(event, VanillaGuiLayers.FOOD_LEVEL);
+        captureInPlace(event, VanillaGuiLayers.FOOD_LEVEL, FOOD);
         capture(event, VanillaGuiLayers.VEHICLE_HEALTH);
         capture(event, VanillaGuiLayers.AIR_LEVEL);
         capture(event, VanillaGuiLayers.CONTEXTUAL_INFO_BAR_BACKGROUND);
@@ -107,13 +120,15 @@ public final class HudLayoutManager {
         this.blocks.put(CHAT, new SimpleHudBlock(CHAT, "hui.block.chat",
                 layers(VanillaGuiLayers.CHAT),
                 HudLayoutManager::chatBounds));
+        this.blocks.put(FOOD, new InPlaceHudBlock(FOOD, "hui.block.food", this.inPlaceLayers.get(VanillaGuiLayers.FOOD_LEVEL),
+                HudLayoutManager::foodBounds));
         this.blocks.put(SCOREBOARD, new SimpleHudBlock(SCOREBOARD, "hui.block.scoreboard",
                 layers(VanillaGuiLayers.SCOREBOARD_SIDEBAR),
                 HudLayoutManager::scoreboardBounds));
 
         // --- Everything else that is registered at this point (vanilla leftovers and other mods' HUD layers) --
         for (Identifier id : HudLayerDiscovery.discover(event)) {
-            if (this.capturedLayers.containsKey(id) || ROOT_LAYER.equals(id)) {
+            if (this.capturedLayers.containsKey(id) || this.inPlaceLayers.containsKey(id) || ROOT_LAYER.equals(id)) {
                 continue;
             }
             captureAutoBlock(event, id);
@@ -125,13 +140,76 @@ public final class HudLayoutManager {
                 this.blocks.size(), this.blocks.size() - BUILTIN_BLOCK_COUNT);
     }
 
-    private static final int BUILTIN_BLOCK_COUNT = 6;
+    private static final int BUILTIN_BLOCK_COUNT = 7;
 
     private void capture(RegisterGuiLayersEvent event, Identifier id) {
         event.wrapLayer(id, original -> {
             this.capturedLayers.put(id, original);
             return NOOP_LAYER;
         });
+    }
+
+    /** Captures a layer but keeps rendering it in NeoForge's pipeline; offsets are applied via the render events. */
+    private void captureInPlace(RegisterGuiLayersEvent event, Identifier layerId, Identifier blockId) {
+        event.wrapLayer(layerId, original -> {
+            this.inPlaceLayers.put(layerId, original);
+            this.inPlaceTargets.put(layerId, blockId);
+            return (graphics, deltaTracker) -> original.render(graphics, deltaTracker);
+        });
+    }
+
+    /**
+     * Pushes the configured translation for in-place layers. Registered on the game bus with the highest priority, so
+     * the push happens before the layer and before other mods' own {@code RenderGuiLayerEvent} decorations.
+     */
+    public void onLayerPre(RenderGuiLayerEvent.Pre event) {
+        Identifier layerId = event.getName();
+        Identifier id = this.inPlaceTargets.get(layerId);
+        if (id == null) {
+            return;
+        }
+
+        GuiGraphicsExtractor graphics = event.getGuiGraphics();
+        float offsetX;
+        float offsetY;
+        if (this.working != null) {
+            // The editor draws its own preview; move the real layer off screen so it is not drawn twice.
+            offsetX = OFFSCREEN;
+            offsetY = OFFSCREEN;
+        } else {
+            HudLayout layout = this.active;
+            if (layout.isHidden(id)) {
+                offsetX = OFFSCREEN;
+                offsetY = OFFSCREEN;
+            } else {
+                offsetX = layout.offsetX(id);
+                offsetY = layout.offsetY(id);
+            }
+        }
+
+        graphics.pose().pushMatrix();
+        graphics.pose().translate(offsetX, offsetY);
+        this.pushedLayers.add(layerId);
+    }
+
+    /**
+     * Safety net: if another mod cancels {@code RenderGuiLayerEvent.Pre} after our push, no Post event follows and the
+     * matrix push would leak into the remaining HUD. Clean up any leftover push at the end of the GUI frame.
+     */
+    public void onGuiPost(RenderGuiEvent.Post event) {
+        while (!this.pushedLayers.isEmpty()) {
+            event.getGuiGraphics().pose().popMatrix();
+            this.pushedLayers.clear();
+        }
+    }
+    /**
+     * Pops the translation pushed in {@link #onLayerPre}. Registered with the lowest priority, so it runs after other
+     * mods' {@code RenderGuiLayerEvent.Post} decorations and those move together with the layer.
+     */
+    public void onLayerPost(RenderGuiLayerEvent.Post event) {
+        if (this.pushedLayers.remove(event.getName())) {
+            event.getGuiGraphics().pose().popMatrix();
+        }
     }
 
     /**
@@ -142,6 +220,10 @@ public final class HudLayoutManager {
         AutoHudBlock[] holder = new AutoHudBlock[1];
         event.wrapLayer(id, original -> {
             AutoHudBlock block = new AutoHudBlock(id, original);
+            if ("appleskin".equals(id.getNamespace())) {
+                // AppleSkin draws hunger/saturation overlays on top of the hunger bar; keep them attached to it.
+                this.followerTargets.put(id, FOOD);
+            }
             holder[0] = block;
             return (graphics, deltaTracker) -> renderAutoLayer(id, original, graphics, deltaTracker);
         });
@@ -156,12 +238,13 @@ public final class HudLayoutManager {
             // The editor renders its own preview of every block.
             return;
         }
+        Identifier target = this.followerTargets.getOrDefault(id, id);
         HudLayout layout = this.active;
-        if (layout.isHidden(id)) {
+        if (layout.isHidden(target)) {
             return;
         }
         graphics.pose().pushMatrix();
-        graphics.pose().translate(layout.offsetX(id), layout.offsetY(id));
+        graphics.pose().translate(layout.offsetX(target), layout.offsetY(target));
         try {
             layer.render(graphics, deltaTracker);
         } finally {
@@ -204,7 +287,6 @@ public final class HudLayoutManager {
             // with the other editable blocks.
             renderLayer(graphics, deltaTracker, VanillaGuiLayers.PLAYER_HEALTH, OFFSCREEN, OFFSCREEN);
             renderLayer(graphics, deltaTracker, VanillaGuiLayers.ARMOR_LEVEL, 0, 0);
-            renderLayer(graphics, deltaTracker, VanillaGuiLayers.FOOD_LEVEL, 0, 0);
         }
         renderLayer(graphics, deltaTracker, VanillaGuiLayers.VEHICLE_HEALTH, 0, 0);
         if (survivalHud) {
@@ -217,8 +299,9 @@ public final class HudLayoutManager {
                 continue;
             }
             HudBlock block = this.blocks.get(id);
-            // Auto-detected layers render themselves from their NeoForge wrapper; only built-in blocks are painted here.
-            if (block != null && !(block instanceof AutoHudBlock)) {
+            // Auto-detected and in-place layers render themselves from NeoForge's pipeline; only captured blocks are
+            // painted here.
+            if (block != null && !(block instanceof AutoHudBlock) && !(block instanceof InPlaceHudBlock)) {
                 block.render(graphics, deltaTracker, layout.offsetX(id), layout.offsetY(id));
             }
         }
@@ -293,6 +376,10 @@ public final class HudLayoutManager {
             if (block == null) {
                 continue;
             }
+            // Follower layers are moved together with their target block, so they are not listed separately.
+            if (this.followerTargets.containsKey(id)) {
+                continue;
+            }
             // Auto-detected layers that currently draw nothing, or that are full screen overlays, stay out of the way.
             if (block instanceof AutoHudBlock auto && !auto.isEditable(screenWidth, screenHeight)) {
                 continue;
@@ -355,6 +442,11 @@ public final class HudLayoutManager {
     /** Hotbar: vanilla draws {@code 182x22} at {@code (width / 2 - 91, height - 22)}; the offhand slot is not included. */
     private static HudRect hotbarBounds(int screenWidth, int screenHeight) {
         return new HudRect(screenWidth / 2 - 91, screenHeight - 22, 182, 22);
+    }
+
+    /** Hunger: vanilla draws ten 9px food icons from {@code width / 2 + 10} at {@code height - 39}. */
+    private static HudRect foodBounds(int screenWidth, int screenHeight) {
+        return new HudRect(screenWidth / 2 + 10, screenHeight - 39, 81, 9);
     }
 
     /**

@@ -58,6 +58,7 @@
   "hui.block.minecraft.spectator_tooltip": "Spectator tooltip",
   "hui.block.minecraft.title": "Title",
   "hui.block.hui.info_hud": "HUI panel",
+  "hui.block.food": "Hunger",
   "hui.menu.reset_all": "Reset all HUDs",
   "hui.menu.reset_block": "Reset this HUD"
 }
