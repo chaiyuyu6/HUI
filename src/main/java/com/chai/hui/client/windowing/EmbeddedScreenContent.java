@@ -2,6 +2,7 @@ package com.chai.hui.client.windowing;
 
 import java.lang.reflect.Method;
 
+import com.chai.hui.network.ActivateMenuPayload;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
@@ -13,7 +14,11 @@ import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.client.renderer.RenderPipelines;
 import net.minecraft.resources.Identifier;
+import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.inventory.AbstractContainerMenu;
+import net.minecraft.world.inventory.Slot;
+import net.neoforged.neoforge.client.network.ClientPacketDistributor;
 import org.jetbrains.annotations.Nullable;
 
 /**
@@ -54,6 +59,65 @@ public final class EmbeddedScreenContent implements WindowContent {
                 float partialTick);
     }
 
+    /**
+     * A block entity container window: the vanilla container screen cropped to the container's own slots, so the player
+     * inventory part of the screen is not shown (requirement: "裁掉物品栏" for block entity windows in HUI mode).
+     */
+    public static EmbeddedScreenContent blockEntity(AbstractContainerScreen<?> screen) {
+        int[] crop = containerCrop(screen);
+        return new EmbeddedScreenContent(screen, crop[0], crop[1], crop[2], crop[3], null);
+    }
+
+    private static int[] containerCrop(AbstractContainerScreen<?> screen) {
+        AbstractContainerMenu menu = screen.getMenu();
+        int minX = Integer.MAX_VALUE;
+        int minY = Integer.MAX_VALUE;
+        int maxX = Integer.MIN_VALUE;
+        int maxY = Integer.MIN_VALUE;
+        for (Slot slot : menu.slots) {
+            if (slot.container instanceof Inventory) {
+                continue;
+            }
+            minX = Math.min(minX, slot.x);
+            minY = Math.min(minY, slot.y);
+            maxX = Math.max(maxX, slot.x);
+            maxY = Math.max(maxY, slot.y);
+        }
+        int imageWidth = screen.getImageWidth();
+        int imageHeight = screen.getImageHeight();
+        if (minX == Integer.MAX_VALUE) {
+            return new int[] {0, 0, imageWidth, imageHeight};
+        }
+        int left = Math.max(0, minX - 3);
+        // The window chrome already shows the container title, so crop away the panel label and show only slots.
+        int top = Math.max(0, minY - 3);
+        int right = Math.min(imageWidth, maxX + 20);
+        int bottom = Math.min(imageHeight, maxY + 18);
+        return new int[] {left, top, right - left, bottom - top};
+    }
+
+    /** @return the embedded menu, used by the desktop for carried stack bookkeeping. */
+    public AbstractContainerMenu screenMenu() {
+        return this.screen.getMenu();
+    }
+
+    /** @return the container id of the embedded menu (0 for the player inventory). */
+    public int menuContainerId() {
+        return this.screen.getMenu().containerId;
+    }
+
+    /** Makes this window's menu the active server side menu, so vanilla click packets are routed to it. */
+    public void activateIfRemote() {
+        int containerId = menuContainerId();
+        if (containerId == 0) {
+            return;
+        }
+        Minecraft minecraft = Minecraft.getInstance();
+        ClientPacketDistributor.sendToServer(new ActivateMenuPayload(containerId));
+        if (minecraft.player != null) {
+            minecraft.player.containerMenu = this.screen.getMenu();
+        }
+    }
     /** The full survival inventory window (crafting, armor, offhand, player preview). */
     public static EmbeddedScreenContent survival(Player player) {
         return new EmbeddedScreenContent(new InventoryScreen(player), 0, 0, INVENTORY_WIDTH, INVENTORY_HEIGHT,

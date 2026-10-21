@@ -8,6 +8,7 @@ import com.chai.hui.HuiMod;
 import com.chai.hui.client.screen.HuiConfigScreen;
 import com.chai.hui.client.screen.HuiScreens;
 import com.chai.hui.client.ui.ContextMenu;
+import com.chai.hui.network.CloseMenuPayload;
 import com.mojang.blaze3d.platform.InputConstants;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.screens.Screen;
@@ -17,6 +18,7 @@ import net.minecraft.client.input.KeyEvent;
 import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
+import net.neoforged.neoforge.client.network.ClientPacketDistributor;
 import org.jetbrains.annotations.Nullable;
 
 /**
@@ -59,6 +61,7 @@ public final class HuiDesktopScreen extends Screen {
     private double dragOffsetY;
     private @Nullable ContextMenu menu;
     private @Nullable AbstractContainerScreen<?> pendingContainerScreen;
+    private @Nullable EmbeddedScreenContent activeContent;
 
     private HuiDesktopScreen(@Nullable Identifier requestedInventoryType) {
         super(Component.translatable("hui.desktop.title"));
@@ -117,13 +120,7 @@ public final class HuiDesktopScreen extends Screen {
 
     /** Wraps an already opened container screen into an ephemeral window placed in the middle of the desktop. */
     private void adoptContainerWindow(AbstractContainerScreen<?> screen) {
-        for (HuiWindow window : new ArrayList<>(this.windows)) {
-            if (window.typeId().equals(HuiWindowTypes.BLOCK_ENTITY)) {
-                closeWindow(window);
-            }
-        }
-        WindowContent content = new EmbeddedScreenContent(screen, 0, 0, screen.getImageWidth(),
-                screen.getImageHeight(), null);
+        WindowContent content = EmbeddedScreenContent.blockEntity(screen);
         HuiWindow window = new HuiWindow(UUID.randomUUID().toString(), HuiWindowTypes.BLOCK_ENTITY, screen.getTitle(),
                 content);
         window.setEphemeral(true);
@@ -289,6 +286,7 @@ public final class HuiDesktopScreen extends Screen {
     }
 
     private void closeWindow(HuiWindow window) {
+        releaseBlockEntityMenu(window);
         window.content().removed();
         this.windows.remove(window);
         if (this.focused == window) {
@@ -299,6 +297,37 @@ public final class HuiDesktopScreen extends Screen {
         }
         if (this.contentDragging == window) {
             this.contentDragging = null;
+        }
+    }
+
+    /** Sends the server the request to close this window's container menu (if it has one). */
+    private void releaseBlockEntityMenu(HuiWindow window) {
+        if (!(window.content() instanceof EmbeddedScreenContent embedded) || embedded.menuContainerId() == 0) {
+            return;
+        }
+        ClientPacketDistributor.sendToServer(new CloseMenuPayload(embedded.menuContainerId()));
+        if (this.minecraft != null && this.minecraft.player != null
+                && this.minecraft.player.containerMenu.containerId == embedded.menuContainerId()) {
+            this.minecraft.player.containerMenu = this.minecraft.player.inventoryMenu;
+        }
+    }
+
+    /** Makes the clicked window the active menu and clears the previous window's stale carried stack. */
+    private void activateContent(EmbeddedScreenContent content) {
+        if (this.activeContent != content && this.activeContent != null) {
+            this.activeContent.screenMenu().setCarried(net.minecraft.world.item.ItemStack.EMPTY);
+        }
+        this.activeContent = content;
+        content.activateIfRemote();
+    }
+    /** Closes the block entity window whose menu is no longer valid (server side close notification). */
+    public void closeBlockEntityWindow(int containerId) {
+        for (HuiWindow window : new ArrayList<>(this.windows)) {
+            if (window.typeId().equals(HuiWindowTypes.BLOCK_ENTITY)
+                    && window.content() instanceof EmbeddedScreenContent embedded
+                    && embedded.menuContainerId() == containerId) {
+                closeWindow(window);
+            }
         }
     }
 
@@ -462,6 +491,9 @@ public final class HuiDesktopScreen extends Screen {
                 return true;
             }
             this.contentDragging = window;
+            if (window.content() instanceof EmbeddedScreenContent embedded) {
+                activateContent(embedded);
+            }
             window.content().mouseClicked(event, window.contentX(), window.contentY(), doubleClick);
             return true;
         }
@@ -473,6 +505,18 @@ public final class HuiDesktopScreen extends Screen {
         return super.mouseClicked(event, doubleClick);
     }
 
+    @Override
+    public void mouseMoved(double mouseX, double mouseY) {
+        for (int index = this.windows.size() - 1; index >= 0; index--) {
+            HuiWindow window = this.windows.get(index);
+            if (!window.minimized() && window.contains(mouseX, mouseY)) {
+                if (window.content() instanceof EmbeddedScreenContent embedded) {
+                    activateContent(embedded);
+                }
+                return;
+            }
+        }
+    }
     @Override
     public boolean mouseDragged(MouseButtonEvent event, double dragX, double dragY) {
         if (this.dragging != null) {
@@ -641,6 +685,10 @@ public final class HuiDesktopScreen extends Screen {
 
     @Override
     public void onClose() {
+        // Release every block entity menu before the desktop goes away.
+        for (HuiWindow window : new ArrayList<>(this.windows)) {
+            releaseBlockEntityMenu(window);
+        }
         captureActivePage();
         for (DesktopLayout.PageLayout page : this.layout.pages) {
             page.windows.removeIf(window -> !window.pinned);

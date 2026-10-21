@@ -1,11 +1,16 @@
 package com.chai.hui;
 
 import com.chai.hui.network.HuiNetwork;
+import com.chai.hui.server.HuiMenuManager;
 import com.mojang.logging.LogUtils;
+import net.minecraft.server.level.ServerPlayer;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.fml.ModContainer;
 import net.neoforged.fml.common.Mod;
 import net.neoforged.fml.config.ModConfig;
+import net.neoforged.neoforge.common.NeoForge;
+import net.neoforged.neoforge.event.entity.player.PlayerEvent;
+import net.neoforged.neoforge.event.tick.ServerTickEvent;
 import org.slf4j.Logger;
 
 /**
@@ -29,6 +34,14 @@ public final class HuiMod {
         // HUI only changes the client, so its settings live in a CLIENT config (config/hui-client.toml).
         modContainer.registerConfig(ModConfig.Type.CLIENT, HuiConfig.SPEC);
         modEventBus.addListener(HuiNetwork::register);
+        // Tracked container menus: periodically close the ones that became invalid (block removed / out of range) and
+        // clean up on logout so no menu outlives its player.
+        NeoForge.EVENT_BUS.addListener((ServerTickEvent.Post event) -> HuiMenuManager.validateAll(event.getServer()));
+        NeoForge.EVENT_BUS.addListener((PlayerEvent.PlayerLoggedOutEvent event) -> {
+            if (event.getEntity() instanceof ServerPlayer player) {
+                HuiMenuManager.clear(player);
+            }
+        });
         LOGGER.info("HUI (by chai) is loading - GUI/HUD tweaks for Minecraft 26.3");
     }
 }
