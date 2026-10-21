@@ -7,6 +7,7 @@ import com.chai.hui.client.hud.HudBlock;
 import com.chai.hui.client.hud.HudLayout;
 import com.chai.hui.client.hud.HudLayoutManager;
 import com.chai.hui.client.hud.HudRect;
+import com.chai.hui.client.ui.ContextMenu;
 import com.chai.hui.client.screen.HuiConfigScreen;
 import com.chai.hui.client.screen.HuiScreens;
 import com.mojang.blaze3d.platform.InputConstants;

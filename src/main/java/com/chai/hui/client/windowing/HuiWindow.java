@@ -4,37 +4,49 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 
 /**
- * A draggable window on the HUI desktop.
+ * A runtime window on the HUI desktop: its content plus the per-window state (position, size, title, minimized, pinned).
  *
- * <p>The prototype keeps this deliberately small; the full design adds pages, pinning, minimizing and per-window
- * state persistence ({@code docs/windowing-design.md}).
+ * <p>Persistence is handled by the desktop through {@link DesktopLayout.WindowLayout}; this class is never serialized
+ * directly.
  */
 public final class HuiWindow {
     /** Height of the title bar / draggable area. */
     public static final int TITLE_HEIGHT = 16;
 
-    private final Identifier id;
-    private final Component title;
+    private final String uid;
+    private final Identifier typeId;
     private final WindowContent content;
-    private final int width;
-    private final int height;
+    private Component title;
     private int x;
     private int y;
+    private int width;
+    private int height;
+    private boolean minimized;
+    private boolean pinned;
 
-    public HuiWindow(Identifier id, Component title, WindowContent content) {
-        this.id = id;
+    public HuiWindow(String uid, Identifier typeId, Component title, WindowContent content) {
+        this.uid = uid;
+        this.typeId = typeId;
         this.title = title;
         this.content = content;
         this.width = content.preferredWidth();
         this.height = content.preferredHeight() + TITLE_HEIGHT;
     }
 
-    public Identifier id() {
-        return this.id;
+    public String uid() {
+        return this.uid;
+    }
+
+    public Identifier typeId() {
+        return this.typeId;
     }
 
     public Component title() {
         return this.title;
+    }
+
+    public void setTitle(Component title) {
+        this.title = title;
     }
 
     public WindowContent content() {
@@ -57,14 +69,35 @@ public final class HuiWindow {
         return this.height;
     }
 
-    /** X coordinate where the content starts (same as the window X, the frame is drawn on the outline). */
     public int contentX() {
         return this.x;
     }
 
-    /** Y coordinate where the content starts, below the title bar. */
     public int contentY() {
         return this.y + TITLE_HEIGHT;
+    }
+
+    public boolean minimized() {
+        return this.minimized;
+    }
+
+    public void setMinimized(boolean minimized) {
+        this.minimized = minimized;
+    }
+
+    public boolean pinned() {
+        return this.pinned;
+    }
+
+    public void setPinned(boolean pinned) {
+        this.pinned = pinned;
+    }
+
+    public void setBounds(int x, int y, int width, int height) {
+        this.x = x;
+        this.y = y;
+        this.width = width;
+        this.height = height;
     }
 
     public void setPosition(int x, int y) {
@@ -73,8 +106,7 @@ public final class HuiWindow {
     }
 
     public boolean contains(double mouseX, double mouseY) {
-        return mouseX >= this.x && mouseX < this.x + this.width && mouseY >= this.y
-                && mouseY < this.y + this.height;
+        return mouseX >= this.x && mouseX < this.x + this.width && mouseY >= this.y && mouseY < this.y + this.height;
     }
 
     public boolean isInTitleBar(double mouseX, double mouseY) {

@@ -7,19 +7,23 @@ import com.chai.hui.client.hud.HuiHudLayer;
 import com.chai.hui.client.hud.editor.HudEditorScreen;
 import com.chai.hui.client.screen.HuiConfigScreen;
 import com.chai.hui.client.screen.HuiScreens;
+import com.chai.hui.client.windowing.DesktopLayoutStore;
 import com.chai.hui.client.windowing.HuiDesktopScreen;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.screens.inventory.InventoryScreen;
 import net.minecraft.resources.Identifier;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.EventPriority;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.fml.ModContainer;
 import net.neoforged.fml.common.Mod;
+import net.neoforged.neoforge.client.event.ClientPlayerNetworkEvent;
 import net.neoforged.neoforge.client.event.ClientTickEvent;
 import net.neoforged.neoforge.client.event.RegisterGuiLayersEvent;
 import net.neoforged.neoforge.client.event.RegisterKeyMappingsEvent;
 import net.neoforged.neoforge.client.event.RenderGuiEvent;
 import net.neoforged.neoforge.client.event.RenderGuiLayerEvent;
+import net.neoforged.neoforge.client.event.ScreenEvent;
 import net.neoforged.neoforge.client.gui.IConfigScreenFactory;
 import net.neoforged.neoforge.common.NeoForge;
 
@@ -47,6 +51,10 @@ public final class HuiClient {
                 HudLayoutManager.get()::onLayerPost);
         // Safety net in case a layer render was cancelled between push and pop.
         NeoForge.EVENT_BUS.addListener(RenderGuiEvent.Post.class, HudLayoutManager.get()::onGuiPost);
+        // HUI inventory mode: replace the vanilla player inventory screen with the windowed desktop (toggle lives in the
+        // desktop's right-click menu and is stored per save).
+        NeoForge.EVENT_BUS.addListener(this::onScreenOpening);
+        NeoForge.EVENT_BUS.addListener(this::onLoggingOut);
 
         // Lets the "Config" button in the Mods menu open the HUI settings screen.
         modContainer.registerExtensionPoint(IConfigScreenFactory.class,
@@ -88,7 +96,7 @@ public final class HuiClient {
 
         while (HuiKeyMappings.OPEN_DESKTOP.consumeClick()) {
             if (minecraft.gui.screen() == null && minecraft.player != null) {
-                HuiScreens.open(minecraft, new HuiDesktopScreen());
+                HuiScreens.open(minecraft, HuiDesktopScreen.openWithoutInventory());
             }
         }
         while (HuiKeyMappings.EDIT_HUD.consumeClick()) {
@@ -101,5 +109,27 @@ public final class HuiClient {
         if (HudLayoutManager.get().isEditing() && minecraft.gui.screen() == null) {
             HudLayoutManager.get().cancel();
         }
+    }
+
+    /**
+     * Replaces the vanilla player inventory screen with the windowed desktop when "HUI inventory" is enabled. Only
+     * screens opened from the game (no current screen) are replaced, so e.g. the inventory opened from another GUI is
+     * left alone.
+     */
+    private void onScreenOpening(ScreenEvent.Opening event) {
+        if (event.getCurrentScreen() != null) {
+            return;
+        }
+        if (!(event.getNewScreen() instanceof InventoryScreen)) {
+            return;
+        }
+        if (!DesktopLayoutStore.isHuiInventoryEnabled()) {
+            return;
+        }
+        event.setNewScreen(HuiDesktopScreen.openWithInventory());
+    }
+
+    private void onLoggingOut(ClientPlayerNetworkEvent.LoggingOut event) {
+        DesktopLayoutStore.invalidate();
     }
 }

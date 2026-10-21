@@ -1,4 +1,4 @@
-package com.chai.hui.client.hud.editor;
+package com.chai.hui.client.ui;
 
 import java.util.List;
 
