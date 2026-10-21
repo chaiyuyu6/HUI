@@ -169,22 +169,24 @@ public final class HudLayoutManager {
             return;
         }
 
+        if (this.working != null) {
+            // The editor draws its own preview. Cancel the layer instead of moving it off screen: a cancelled layer
+            // is not rendered at all, so vanilla layout counters (rightHeight for the hunger bar) keep their baseline
+            // values and the preview lines up with the block's selection box.
+            event.setCanceled(true);
+            return;
+        }
+
         GuiGraphicsExtractor graphics = event.getGuiGraphics();
+        HudLayout layout = this.active;
         float offsetX;
         float offsetY;
-        if (this.working != null) {
-            // The editor draws its own preview; move the real layer off screen so it is not drawn twice.
+        if (layout.isHidden(id)) {
             offsetX = OFFSCREEN;
             offsetY = OFFSCREEN;
         } else {
-            HudLayout layout = this.active;
-            if (layout.isHidden(id)) {
-                offsetX = OFFSCREEN;
-                offsetY = OFFSCREEN;
-            } else {
-                offsetX = layout.offsetX(id);
-                offsetY = layout.offsetY(id);
-            }
+            offsetX = layout.offsetX(id);
+            offsetY = layout.offsetY(id);
         }
 
         graphics.pose().pushMatrix();

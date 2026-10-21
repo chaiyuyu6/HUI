@@ -36,6 +36,8 @@ Minecraft **26.3** / NeoForge **26.3.0.90** 的 GUI / HUD 修改模组。
 
 ![HUD 编辑器：可编辑块（含 HUI 信息面板）](docs/hud-editor.png)
 
+![编辑器中的饱食度块（预览与选框对齐）](docs/hud-hunger-editor.png)
+
 ![可编辑的饱食度块（拖动后游戏内同步移动）](docs/hud-hunger.png)
 
 ![主菜单里的“重置全部 HUD”](docs/hud-menu-reset.png)
