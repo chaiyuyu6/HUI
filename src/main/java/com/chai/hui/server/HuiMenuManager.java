@@ -34,6 +34,14 @@ public final class HuiMenuManager {
         return menus == null ? null : menus.get(containerId);
     }
 
+    /** Stops tracking a menu that vanilla already closed (e.g. the player pressed ESC in a vanilla screen). */
+    public static void untrack(ServerPlayer player, int containerId) {
+        Map<Integer, AbstractContainerMenu> menus = MENUS.get(player.getUUID());
+        if (menus != null) {
+            menus.remove(containerId);
+        }
+    }
+
     /** Closes one tracked menu (client already closed its window). */
     public static void closeMenu(ServerPlayer player, int containerId) {
         Map<Integer, AbstractContainerMenu> menus = MENUS.get(player.getUUID());

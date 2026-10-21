@@ -387,3 +387,16 @@ HuiWindows.register(Identifier.of("mymod", "machine_window"), registry -> regist
 - **已实测（生存模式）**：在「默认物品栏 + 酿造台」组合里，把 16 个橡木木板从物品栏拖到酿造台输入槽
   （木板不是酿造材料，必被拒绝）→ 松手后木板仍显示在光标上、物品栏对应槽位为空、没有丢失；
   再点物品栏即可正常放回。
+
+## 23. 直接打开的容器未登记菜单（点击拾取后悬停另一窗口物品消失）
+
+- **复现**：在物品栏窗口点一下物品（拾取到光标）→ 鼠标移到容器窗口上 → 物品消失；再点物品栏又出现。
+- **原因**：`HuiMenuManager` 只在「打开容器」列表请求（`OpenBlockEntityPayload`）里登记菜单；之后改成
+  「右键方块直接进 HUI」后，这类菜单是原版 `player.openMenu` 打开的，**没有登记**。
+  鼠标悬停到容器窗口会触发 `ActivateMenuPayload`：客户端把上一个窗口的 carried 清掉并切换到目标菜单，
+  但服务端 `HuiMenuManager.get` 找不到该菜单 → 直接 return，服务端容器菜单仍是原来的（物品还在服务端原菜单的
+  carried 里，客户端却已清空）→ 视觉上物品消失。下次点击物品栏会发 `Activate(0)`：
+  服务端把 carried 从当前菜单转回 `inventoryMenu` 并全量同步 → 物品重新出现。
+- **修复**：监听 NeoForge 的 `PlayerContainerEvent.Open/Close`，把所有非 0 号容器菜单登记/注销到 `HuiMenuManager`，
+  不再只依赖列表打开路径。这样悬停激活时服务端能正确把 carried 转移到目标菜单并全量同步。
+- 由用户实测验证（本轮按用户要求未启动游戏自动化测试）。
