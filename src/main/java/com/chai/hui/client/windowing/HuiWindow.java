@@ -23,6 +23,7 @@ public final class HuiWindow {
     private int height;
     private boolean minimized;
     private boolean pinned;
+    private boolean ephemeral;
 
     public HuiWindow(String uid, Identifier typeId, Component title, WindowContent content) {
         this.uid = uid;
@@ -91,6 +92,14 @@ public final class HuiWindow {
 
     public void setPinned(boolean pinned) {
         this.pinned = pinned;
+    }
+
+    public boolean ephemeral() {
+        return this.ephemeral;
+    }
+
+    public void setEphemeral(boolean ephemeral) {
+        this.ephemeral = ephemeral;
     }
 
     public void setBounds(int x, int y, int width, int height) {

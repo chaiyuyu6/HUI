@@ -181,7 +181,7 @@ HuiWindows.register(Identifier.of("mymod", "machine_window"), registry -> regist
 | P0 ✅ | 嵌入渲染原型：单窗口 + 原版物品栏嵌入 + 拖拽 + 裁剪                      | 可构建；窗口能拖动；槽位可点；无崩溃   |
 | P1 ✅ | 页面/窗口模型、多个窗口、z-order、最小化/固定/关闭、窗口管理器、持久化、页面栏、切换原版开关 | 重开桌面后固定窗口恢复；空页面自动删除  |
 | P2 ✅ | 物品栏窗口（生存/创造/默认 36+快捷栏）、槽位交互、tooltip、carried item    | 可正常存取物品；与原版行为一致      |
-| P3   | 方块实体窗口 + 服务端多菜单 + 可达校验 + 跨窗口搬运（探索）                  | 打开箱子窗口可观可操作；离开范围自动关闭 |
+| P3 ◐ | 方块实体窗口 + 服务端多菜单 + 可达校验 + 跨窗口搬运（探索）                  | 打开箱子窗口可观可操作；离开范围自动关闭 |
 | P4   | 窗口注册 API + 控件库 + 全屏兜底 + JEI 适配                      | 第三方可注册窗口；JEI 配方可拖入窗口 |
 
 ## 12. 风险
@@ -235,3 +235,27 @@ HuiWindows.register(Identifier.of("mymod", "machine_window"), registry -> regist
   则要在 P3 增加自定义菜单 + 存档持久化（可复用方块实体窗口的菜单层）。当前实现是「裁剪的真实物品栏视图」，
   因为它在 P2 内即可完整交互，且不需要服务端菜单。
 - **小问题**：创造窗口在 GUI 缩放 5、桌面高度 240 时内容高 214，底部页签行会被屏幕底边裁掉一点；P3 调窗口钳制。
+
+## 16. P3 实施记录（增量一：方块实体窗口，已实测）
+
+- **网络**：新增 `OpenBlockEntityPayload`（客户端→服务端，带 BlockPos）与 `HuiNetwork`，在 `HuiMod` 的 mod 总线
+  `RegisterPayloadHandlersEvent` 注册（在 `HuiMod` 主类注册，客户端/服务端共用）。
+- **打开流程**：
+  1. 桌面空白右键 →「打开容器…」→ `HuiContainerListScreen`：扫描玩家周围 8 格的 `MenuProvider` 方块实体，
+     按距离排序，带搜索框过滤（客户端扫描只是便利，安全校验在服务端）；
+  2. 选中后发送 payload 并关闭列表；
+  3. 服务端校验：区块已加载、`player.isWithinBlockInteractionRange(pos, 1.0)`、方块实体仍存在且是 `MenuProvider`，
+     失败时给玩家发「该容器已不在手长范围内」；通过则 `player.openMenu(provider)`；
+  4. 客户端 `ScreenEvent.Opening` 看到 pending 请求 + 新屏幕是 `AbstractContainerScreen` 时，不放行原版全屏界面，
+     而是把它包成窗口（`HuiDesktopScreen.queueContainerWindow`）并让桌面保持为当前屏幕
+     （`setScreen` 同实例不会触发 removed，只会重新 init，窗口状态不丢）。
+- **窗口内容**：`EmbeddedScreenContent(screen, 0,0,imageWidth,imageHeight, null)` —— 背景走容器自己的
+  `extractBackground`（箱子面板），槽位/标签/tooltip/手持物品与原版一致；已实测把钻石从玩家背包拖进箱子。
+- **可达性**：服务端每 tick 检查 `containerMenu.stillValid`，离开范围会关闭菜单；客户端 `clientSideCloseContainer`
+  会 `setScreen(null)`，因此**当前会连整个桌面一起关掉**（已知限制，下一增量处理）。
+- **限制（下一增量）**：
+  - 原版 `openMenu` 会先关闭上一个菜单，所以同一时间只有一个方块实体窗口；再打开另一个会先关桌面再重开新桌面；
+  - 方块实体窗口是**临时窗口**（`ephemeral`）：不写入布局、切页/关桌面即消失，因为还没有「恢复时重新打开菜单」的流程；
+  - 没有多菜单/跨窗口搬运。
+- **下一步（增量二）**：自定义容器 id 跟踪 + 点击路由（复用旧项目的多菜单思路）→ 同时保留多个方块实体窗口、
+  窗口持久化（维度+坐标，恢复时重新校验并打开）、关闭菜单时只关对应窗口而不是整个桌面、跨窗口搬运。

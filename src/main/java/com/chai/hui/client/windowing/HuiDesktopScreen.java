@@ -11,6 +11,7 @@ import com.chai.hui.client.ui.ContextMenu;
 import com.mojang.blaze3d.platform.InputConstants;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import net.minecraft.client.input.CharacterEvent;
 import net.minecraft.client.input.KeyEvent;
 import net.minecraft.client.input.MouseButtonEvent;
@@ -57,6 +58,7 @@ public final class HuiDesktopScreen extends Screen {
     private double dragOffsetX;
     private double dragOffsetY;
     private @Nullable ContextMenu menu;
+    private @Nullable AbstractContainerScreen<?> pendingContainerScreen;
 
     private HuiDesktopScreen(@Nullable Identifier requestedInventoryType) {
         super(Component.translatable("hui.desktop.title"));
@@ -73,9 +75,21 @@ public final class HuiDesktopScreen extends Screen {
         return new HuiDesktopScreen(type);
     }
 
+    /** Opens a fresh desktop that hosts the given container screen as a window (used after the previous menu closed). */
+    public static HuiDesktopScreen openWithContainer(AbstractContainerScreen<?> screen) {
+        HuiDesktopScreen desktop = new HuiDesktopScreen(null);
+        desktop.queueContainerWindow(screen);
+        return desktop;
+    }
+
     /** Opens the desktop restoring the pinned windows only (used by the F8 shortcut). */
     public static HuiDesktopScreen openWithoutInventory() {
         return new HuiDesktopScreen(null);
+    }
+
+    /** Queues a container screen (chest, furnace, ...) to be added as a window on the next init. */
+    public void queueContainerWindow(AbstractContainerScreen<?> screen) {
+        this.pendingContainerScreen = screen;
     }
 
     // --- Layout loading / page building ----------------------------------------------------
@@ -91,10 +105,34 @@ public final class HuiDesktopScreen extends Screen {
                 ensureInventoryWindow(this.requestedInventoryType);
             }
         }
+        if (this.pendingContainerScreen != null) {
+            adoptContainerWindow(this.pendingContainerScreen);
+            this.pendingContainerScreen = null;
+        }
         clampAllWindows();
         for (HuiWindow window : this.windows) {
             window.content().init(this.width, this.height);
         }
+    }
+
+    /** Wraps an already opened container screen into an ephemeral window placed in the middle of the desktop. */
+    private void adoptContainerWindow(AbstractContainerScreen<?> screen) {
+        for (HuiWindow window : new ArrayList<>(this.windows)) {
+            if (window.typeId().equals(HuiWindowTypes.BLOCK_ENTITY)) {
+                closeWindow(window);
+            }
+        }
+        WindowContent content = new EmbeddedScreenContent(screen, 0, 0, screen.getImageWidth(),
+                screen.getImageHeight(), null);
+        HuiWindow window = new HuiWindow(UUID.randomUUID().toString(), HuiWindowTypes.BLOCK_ENTITY, screen.getTitle(),
+                content);
+        window.setEphemeral(true);
+        int cascade = this.windows.size() % 6;
+        window.setPosition(Math.max(0, (this.width - window.width()) / 2 - 60 + cascade * 18),
+                Math.max(TAB_TOP + TAB_HEIGHT, (this.height - window.height()) / 2 - 20 + cascade * 18));
+        clamp(window);
+        this.windows.add(window);
+        bringToFront(window);
     }
 
     private void rebuildActivePage() {
@@ -144,6 +182,10 @@ public final class HuiDesktopScreen extends Screen {
         DesktopLayout.PageLayout page = this.layout.activePage();
         page.windows.clear();
         for (HuiWindow window : this.windows) {
+            if (window.ephemeral()) {
+                // Block entity windows are bound to a live menu; they are not restored from the layout yet.
+                continue;
+            }
             DesktopLayout.WindowLayout stored = new DesktopLayout.WindowLayout();
             stored.id = window.uid();
             stored.type = window.typeId().toString();
@@ -502,7 +544,7 @@ public final class HuiDesktopScreen extends Screen {
 
     private void openMainMenu(double mouseX, double mouseY) {
         List<ContextMenu.Entry> entries = new ArrayList<>();
-        entries.add(new ContextMenu.Entry(Component.translatable("hui.menu.open_container"), () -> {}, false));
+        entries.add(ContextMenu.Entry.of("hui.menu.open_container", this::openContainerList));
         entries.add(ContextMenu.Entry.of("hui.menu.window_manager", this::openWindowManager));
         entries.add(ContextMenu.Entry.of("hui.menu.new_page", this::addPage));
         entries.add(ContextMenu.Entry.of("hui.menu.demo_window", () -> addWindow(HuiWindowTypes.DEMO)));
@@ -566,6 +608,10 @@ public final class HuiDesktopScreen extends Screen {
 
     private void openWindowManager() {
         HuiScreens.open(this.minecraft, new HuiWindowManagerScreen(this));
+    }
+
+    private void openContainerList() {
+        HuiScreens.open(this.minecraft, new HuiContainerListScreen());
     }
 
     private void openHuiConfig() {

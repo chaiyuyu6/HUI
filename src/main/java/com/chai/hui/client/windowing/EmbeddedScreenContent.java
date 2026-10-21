@@ -39,8 +39,11 @@ public final class EmbeddedScreenContent implements WindowContent {
     private static final int CROP_WIDTH = 162;
     private static final int CROP_HEIGHT = 76;
 
-    /** The creative panel has a tab row above and below the panel itself. */
-    private static final int CREATIVE_TOP_MARGIN = 50;
+    /**
+     * The creative tab row sits 28 GUI pixels above the panel; using exactly that as the top margin keeps the window
+     * flush with the title bar (a larger margin showed as an empty black band above the tabs).
+     */
+    private static final int CREATIVE_TOP_MARGIN = 28;
     private static final int CREATIVE_BOTTOM_MARGIN = 28;
 
     private static final @Nullable Method EXTRACT_TOOLTIP = findTooltipMethod();

@@ -9,7 +9,10 @@ import com.chai.hui.client.screen.HuiConfigScreen;
 import com.chai.hui.client.screen.HuiScreens;
 import com.chai.hui.client.windowing.DesktopLayoutStore;
 import com.chai.hui.client.windowing.HuiDesktopScreen;
+import com.chai.hui.client.windowing.HuiRemoteContainers;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import net.minecraft.client.gui.screens.inventory.InventoryScreen;
 import net.minecraft.resources.Identifier;
 import net.neoforged.api.distmarker.Dist;
@@ -79,6 +82,7 @@ public final class HuiClient {
 
     private void onClientTick(ClientTickEvent.Post event) {
         Minecraft minecraft = Minecraft.getInstance();
+        HuiRemoteContainers.tick();
 
         while (HuiKeyMappings.TOGGLE_HUD.consumeClick()) {
             if (minecraft.gui.screen() != null || !HuiConfig.SPEC.isLoaded()) {
@@ -117,6 +121,22 @@ public final class HuiClient {
      * left alone.
      */
     private void onScreenOpening(ScreenEvent.Opening event) {
+        // A block entity container was requested from the HUI "open" list: turn the resulting container screen into a
+        // window instead of a full screen.
+        if (HuiRemoteContainers.hasPending() && event.getNewScreen() instanceof AbstractContainerScreen<?> container) {
+            Screen current = event.getCurrentScreen();
+            HuiDesktopScreen desktop;
+            if (current instanceof HuiDesktopScreen existing) {
+                desktop = existing;
+            } else {
+                desktop = HuiDesktopScreen.openWithContainer(container);
+            }
+            HuiRemoteContainers.clearPending();
+            desktop.queueContainerWindow(container);
+            event.setNewScreen(desktop);
+            return;
+        }
+
         if (event.getCurrentScreen() != null) {
             return;
         }

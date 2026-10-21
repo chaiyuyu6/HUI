@@ -1,5 +1,6 @@
 package com.chai.hui;
 
+import com.chai.hui.network.HuiNetwork;
 import com.mojang.logging.LogUtils;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.fml.ModContainer;
@@ -27,6 +28,7 @@ public final class HuiMod {
     public HuiMod(IEventBus modEventBus, ModContainer modContainer) {
         // HUI only changes the client, so its settings live in a CLIENT config (config/hui-client.toml).
         modContainer.registerConfig(ModConfig.Type.CLIENT, HuiConfig.SPEC);
+        modEventBus.addListener(HuiNetwork::register);
         LOGGER.info("HUI (by chai) is loading - GUI/HUD tweaks for Minecraft 26.3");
     }
 }

@@ -28,6 +28,8 @@ public final class HuiWindowTypes {
     /** The cropped default inventory: only the 27 storage slots and the hotbar row. */
     public static final Identifier DEFAULT_INVENTORY =
             Identifier.fromNamespaceAndPath(HuiMod.MOD_ID, "default_inventory");
+    /** Block entity containers opened through the "open" list; ephemeral and not persisted for now. */
+    public static final Identifier BLOCK_ENTITY = Identifier.fromNamespaceAndPath(HuiMod.MOD_ID, "block_entity");
     public static final Identifier DEMO = Identifier.fromNamespaceAndPath(HuiMod.MOD_ID, "demo");
     public static final Identifier PROPERTIES = Identifier.fromNamespaceAndPath(HuiMod.MOD_ID, "properties");
 
