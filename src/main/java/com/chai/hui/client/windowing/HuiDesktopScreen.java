@@ -13,6 +13,7 @@ import com.chai.hui.client.windowing.ui.TextInputWidget;
 import com.chai.hui.client.windowing.ui.Ui;
 import com.chai.hui.client.windowing.ui.UiPanelContent;
 import com.chai.hui.network.CloseMenuPayload;
+import com.chai.hui.network.CreativeInsertPayload;
 import com.mojang.blaze3d.platform.InputConstants;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.screens.Screen;
@@ -643,6 +644,9 @@ public final class HuiDesktopScreen extends Screen {
                 openWindowMenu(window, mouseX, mouseY);
                 return true;
             }
+            if (!rightClick && tryCreativeInsert(window, mouseX, mouseY)) {
+                return true;
+            }
             if (window.isInTitleBar(mouseX, mouseY)) {
                 this.dragging = window;
                 this.dragOffsetX = mouseX - window.x();
@@ -730,6 +734,36 @@ public final class HuiDesktopScreen extends Screen {
             return true;
         }
         return false;
+    }
+
+    /**
+     * Creative mode has a client only inventory menu, so a stack taken from it cannot be placed by a vanilla click.
+     * When such a stack is on the cursor and the player clicks a slot of a server backed container window, ask the
+     * server to insert a copy into that slot.
+     */
+    private boolean tryCreativeInsert(HuiWindow targetWindow, double mouseX, double mouseY) {
+        if (!(targetWindow.content() instanceof EmbeddedScreenContent target) || !target.serverBacked()) {
+            return false;
+        }
+        EmbeddedScreenContent source = null;
+        if (this.activeContent != null && !this.activeContent.serverBacked()
+                && !this.activeContent.screenMenu().getCarried().isEmpty()) {
+            source = this.activeContent;
+        }
+        if (source == null) {
+            return false;
+        }
+        int slotIndex = target.slotIndexAt((int) mouseX, (int) mouseY, targetWindow.contentX(),
+                targetWindow.contentY());
+        if (slotIndex < 0) {
+            return false;
+        }
+        net.minecraft.world.item.ItemStack stack = source.screenMenu().getCarried().copy();
+        source.screenMenu().setCarried(net.minecraft.world.item.ItemStack.EMPTY);
+        ClientPacketDistributor.sendToServer(
+                new CreativeInsertPayload(target.menuContainerId(), slotIndex, stack));
+        target.activate();
+        return true;
     }
 
     private @Nullable HuiWindow windowAt(double mouseX, double mouseY) {

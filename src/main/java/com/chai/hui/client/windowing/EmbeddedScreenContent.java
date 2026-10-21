@@ -263,6 +263,21 @@ public final class EmbeddedScreenContent implements WindowContent {
         return false;
     }
 
+    /** @return index of the active menu slot under the mouse, or -1. */
+    public int slotIndexAt(int mouseX, int mouseY, int originX, int originY) {
+        int localX = mouseX - this.deltaX(originX);
+        int localY = mouseY - this.deltaY(originY);
+        java.util.List<net.minecraft.world.inventory.Slot> slots = this.screen.getMenu().slots;
+        for (int index = 0; index < slots.size(); index++) {
+            net.minecraft.world.inventory.Slot slot = slots.get(index);
+            if (slot.isActive() && localX >= slot.x && localX < slot.x + 16 && localY >= slot.y
+                    && localY < slot.y + 16) {
+                return index;
+            }
+        }
+        return -1;
+    }
+
     @Override
     public boolean mouseClicked(MouseButtonEvent event, int originX, int originY, boolean doubleClick) {
         return this.screen.mouseClicked(toScreenSpace(event, originX, originY), doubleClick);

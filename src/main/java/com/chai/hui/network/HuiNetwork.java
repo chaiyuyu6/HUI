@@ -32,6 +32,8 @@ public final class HuiNetwork {
         registrar.playToServer(ActivateMenuPayload.TYPE, ActivateMenuPayload.STREAM_CODEC,
                 HuiNetwork::handleActivateMenu);
         registrar.playToServer(CloseMenuPayload.TYPE, CloseMenuPayload.STREAM_CODEC, HuiNetwork::handleCloseMenu);
+        registrar.playToServer(CreativeInsertPayload.TYPE, CreativeInsertPayload.STREAM_CODEC,
+                HuiNetwork::handleCreativeInsert);
         registrar.playToClient(CloseMenuClientPayload.TYPE, CloseMenuClientPayload.STREAM_CODEC,
                 com.chai.hui.client.network.HuiClientPayloads::onMenuClosed);
         registrar.playToClient(OpenBlockEntityResultPayload.TYPE, OpenBlockEntityResultPayload.STREAM_CODEC,
@@ -105,6 +107,29 @@ public final class HuiNetwork {
             }
             // Always resync: the client asks for this after a cross-window drag, and a full state also restores the
             // carried stack if a click was rejected by the target menu.
+            menu.broadcastFullState();
+        });
+    }
+
+    private static void handleCreativeInsert(CreativeInsertPayload payload, IPayloadContext context) {
+        context.enqueueWork(() -> {
+            if (!(context.player() instanceof ServerPlayer player) || !player.hasInfiniteMaterials()) {
+                return;
+            }
+            AbstractContainerMenu menu = HuiMenuManager.get(player, payload.containerId());
+            if (menu == null || !menu.stillValid(player)) {
+                return;
+            }
+            if (payload.slotIndex() < 0 || payload.slotIndex() >= menu.slots.size()) {
+                return;
+            }
+            net.minecraft.world.inventory.Slot slot = menu.slots.get(payload.slotIndex());
+            if (!slot.isActive() || !slot.mayPlace(payload.stack())) {
+                return;
+            }
+            // Creative insert: put a copy into the slot, then sync the menu to the client.
+            slot.set(payload.stack().copy());
+            player.containerMenu = menu;
             menu.broadcastFullState();
         });
     }
