@@ -456,6 +456,12 @@ public final class HuiDesktopScreen extends Screen {
      * carried stack, otherwise the item would disappear when moving the mouse over another window.
      */
     private void activateContent(EmbeddedScreenContent content) {
+        if (this.activeContent != null && this.activeContent != content && !this.activeContent.serverBacked()
+                && !this.activeContent.screenMenu().getCarried().isEmpty()) {
+            // A creative item is on the cursor: keep that window active so the stack stays visible and does not
+            // vanish when the mouse passes over another window.
+            return;
+        }
         if (this.activeContent != content && this.activeContent != null && this.activeContent.serverBacked()) {
             this.activeContent.screenMenu().setCarried(net.minecraft.world.item.ItemStack.EMPTY);
         }

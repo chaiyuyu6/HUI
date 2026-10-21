@@ -125,6 +125,11 @@ public final class EmbeddedScreenContent implements WindowContent {
 
     /** Makes this window's menu the active server side menu, so vanilla click packets are routed to it. */
     public void activate() {
+        if (!this.serverBacked) {
+            // The creative inventory is a client only menu (the server never opens it). Activating it would switch
+            // player.containerMenu to a menu the server does not know and break item picking.
+            return;
+        }
         int containerId = menuContainerId();
         Minecraft minecraft = Minecraft.getInstance();
         ClientPacketDistributor.sendToServer(new ActivateMenuPayload(containerId));

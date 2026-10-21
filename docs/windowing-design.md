@@ -400,3 +400,18 @@ HuiWindows.register(Identifier.of("mymod", "machine_window"), registry -> regist
 - **修复**：监听 NeoForge 的 `PlayerContainerEvent.Open/Close`，把所有非 0 号容器菜单登记/注销到 `HuiMenuManager`，
   不再只依赖列表打开路径。这样悬停激活时服务端能正确把 carried 转移到目标菜单并全量同步。
 - 由用户实测验证（本轮按用户要求未启动游戏自动化测试）。
+
+## 24. 创造模式无法点击拿取物品（激活逻辑回归修复）
+
+- **现象**：创造模式的创造物品栏窗口里点击任何物品都拿不起来。
+- **原因**：窗口点击前会 `activate()` 把该窗口的菜单设为当前菜单。创造物品栏的 `ItemPickerMenu` 是**纯客户端**
+  菜单（`containerId` 也是 0，服务端从来没有这个菜单），激活它会把客户端 `player.containerMenu` 换成服务端
+  不认识的对象；同时服务端 `ActivateMenuPayload(0)` 会回一次 `inventoryMenu` 的全量同步，客户端把这份数据
+  套到创造菜单上，刚拾取的 carried 立刻被覆盖 → 看起来完全无法拿取。
+- **修复**：
+  - `EmbeddedScreenContent.activate()` 对 `serverBacked == false`（创造物品栏）直接 return：不发激活包、不改
+    `player.containerMenu`，恢复原版创造界面的拾取逻辑；
+  - 桌面 `activateContent()` 在当前窗口是「非服务端菜单且 carried 非空」（创造模式拿着物品）时，不再把其它窗口
+    设为活动窗口，避免创造持物在鼠标经过容器窗口时从光标上消失。
+- 创造物品栏仍不能直接把物品"放"进容器窗口（它是客户端菜单，服务端没有对应物品），需要先放到快捷栏/背包，
+  与原版一致。由用户实测验证（本轮未启动游戏自动化）。
