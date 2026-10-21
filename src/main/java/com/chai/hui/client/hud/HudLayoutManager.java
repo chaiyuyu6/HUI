@@ -220,9 +220,9 @@ public final class HudLayoutManager {
         AutoHudBlock[] holder = new AutoHudBlock[1];
         event.wrapLayer(id, original -> {
             AutoHudBlock block = new AutoHudBlock(id, original);
-            if ("appleskin".equals(id.getNamespace())) {
-                // AppleSkin draws hunger/saturation overlays on top of the hunger bar; keep them attached to it.
-                this.followerTargets.put(id, FOOD);
+            Identifier followTarget = followTargetFor(id);
+            if (followTarget != null) {
+                this.followerTargets.put(id, followTarget);
             }
             holder[0] = block;
             return (graphics, deltaTracker) -> renderAutoLayer(id, original, graphics, deltaTracker);
@@ -232,6 +232,18 @@ public final class HudLayoutManager {
         }
     }
 
+    /**
+     * Returns the block an auto-detected layer should be grouped with, or {@code null} to keep it separate.
+     *
+     * <p>AppleSkin registers its saturation/hunger overlays around the vanilla food layer and its estimated-health
+     * overlay around the vanilla health layer, so those layers follow the matching HUI block and move/hide with it.
+     */
+    private static Identifier followTargetFor(Identifier id) {
+        if (!"appleskin".equals(id.getNamespace())) {
+            return null;
+        }
+        return id.getPath().contains("health") ? HEALTH : FOOD;
+    }
     private void renderAutoLayer(Identifier id, GuiLayer layer, GuiGraphicsExtractor graphics,
             DeltaTracker deltaTracker) {
         if (this.working != null) {

@@ -94,8 +94,12 @@ Minecraft **26.3** / NeoForge **26.3.0.90** 的 GUI / HUD 修改模组。
   覆盖层（暗角、睡眠/演示覆盖层）会自动跳过，不会在编辑器里出现巨大选择框。
 - 自动检测的标签使用翻译键 `hui.block.<命名空间>.<路径>`（如 `hui.block.minecraft.crosshair`），缺失时回退显示层
   id，其他 mod 可以自行补充翻译。
-- AppleSkin 兼容：命名空间为 `appleskin:` 的自动检测层会自动跟随饱食度块（隐藏/移动一起），不会单独出现在编辑器里；
+- AppleSkin 兼容：AppleSkin（26.3 版）会在生命值/饱食度附近注册自己的 HUD 层（`appleskin:health_offset`、
+  `appleskin:food_offset`、`appleskin:hunger` 等，共 6 个）。HUI 自动识别它们：名字里带 `health` 的跟随生命值块，
+  其余（food/hunger/saturation/exhaustion）跟随饱食度块，移动/隐藏时一起动作，不会在编辑器里变成独立块；
   如果 AppleSkin 是通过食物层的 `RenderGuiLayerEvent` 绘制，HUI 的矩阵压栈/弹栈同样会把它们一起带走。
+
+![AppleSkin + HUI：饱食度上移后，AppleSkin 的覆盖图标一起移动](docs/appleskin-hunger.png)
 - 自动检测依赖反射读取 NeoForge 事件携带的层列表；如果未来 NeoForge 改了内部结构，会记录一条警告并退回内置 6 块，
   不影响游戏加载和其余功能。
 - 屏幕通过 NeoForge 的 `Gui#pushScreenLayer` 打开；它不像 `Gui#setScreen` 那样释放鼠标抓取，所以 `HuiScreens` 里补了
@@ -130,6 +134,10 @@ cd E:\NewJorney\HUI
 | Java | 25 |
 
 在 IDE 中打开后，可用 `gradlew runClient` 启动开发客户端。
+仓库的 `run/mods/` 里已经放好了用于联调的 **AppleSkin 3.0.10+mc26.3**
+（`appleskin-neoforge-mc26.3-3.0.10.jar`，来源 [Modrinth](https://modrinth.com/mod/appleskin/version/6vok7cLb)），
+`gradlew runClient` 会直接加载它；正式游戏请把同一个 jar 放进 `.minecraft/mods/`。
+
 调试 HUD 布局时可以直接进入某个存档：`.\gradlew.bat runClient -PquickPlay=<存档名>`，或直连本地服务器：
 `.\gradlew.bat runClient -PquickPlayMultiplayer=localhost:25565`。`tools/rcon.py` 是一个极简 RCON 客户端，
 用于给本地测试服务器发指令（例如准备计分板数据）：
