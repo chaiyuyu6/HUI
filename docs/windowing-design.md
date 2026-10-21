@@ -429,3 +429,21 @@ HuiWindows.register(Identifier.of("mymod", "machine_window"), registry -> regist
 - 限制：目前只处理左键单击放置（整组复制），不含右键分堆/数量选择；创造模式仍建议常规流程
   （先放进快捷栏再搬运），此 payload 是为了让 HUI 里"创造 + 容器"组合能直接放东西。
 - 由用户实测验证（本轮未启动游戏）。
+
+## 26. HUI UI 与原版 UI 隔离（方块实体窗口改为 HUI 自绘）
+
+按需求改为「体素实体窗口用 HUI 自己的 UI，原版界面只做数据同步」：
+
+- **数据同步**：原版 `AbstractContainerScreen` 只在收到开屏包时由 `MenuScreens.create` 创建一次，用作
+  `AbstractContainerMenu` 的载体；它**不会被 init/渲染/接收输入**。HUI 只通过 `menu.slots`、`menu.getCarried()`、
+  `handleContainerInput` 读写数据。
+- **渲染**：新增 `HuiContainerContent`（实现 `MenuWindowContent`）：HUI 自绘深色面板 + 槽位边框 + 物品 +
+  数量角标 + 悬停高亮；标题由窗口 chrome 显示；只显示容器自己的槽位（玩家背包不显示）；tooltip 与手持物品
+  由 HUI 在 overlay 层绘制。
+- **交互**：点击先 `activate()`（服务端切菜单 + 客户端 containerMenu 指向它），再
+  `gameMode.handleContainerInput(containerId, slotIndex, button, input, player)`：
+  左键 PICKUP、右键 PICKUP(button 1)、Shift+左键 QUICK_MOVE。拖拽分堆/滚轮/配方书等原版专属控件不再提供。
+- **一致性**：`MenuWindowContent` 接口统一了嵌入式（背包类窗口仍在用）与 HUI 自绘容器窗口，桌面层的激活、
+  固定恢复、跨窗口拖拽、创造模式插入等逻辑对两者都适用。
+- 窗口大小由容器槽位包围盒 + 6px 内边距决定；固定恢复仍按维度 + 坐标重新打开菜单。
+- 由用户实测验证（本轮未启动游戏）。

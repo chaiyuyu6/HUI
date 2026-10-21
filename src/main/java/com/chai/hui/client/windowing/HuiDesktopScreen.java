@@ -68,7 +68,7 @@ public final class HuiDesktopScreen extends Screen {
     private @Nullable AbstractContainerScreen<?> pendingContainerScreen;
     private @Nullable net.minecraft.core.BlockPos pendingContainerPos;
     private final java.util.Map<net.minecraft.core.BlockPos, HuiWindow> pendingRestores = new java.util.HashMap<>();
-    private @Nullable EmbeddedScreenContent activeContent;
+    private @Nullable MenuWindowContent activeContent;
 
     private HuiDesktopScreen(@Nullable Identifier requestedInventoryType) {
         super(Component.translatable("hui.desktop.title"));
@@ -135,7 +135,7 @@ public final class HuiDesktopScreen extends Screen {
      */
     private void adoptContainerWindow(AbstractContainerScreen<?> screen,
             @Nullable net.minecraft.core.BlockPos sourcePos) {
-        WindowContent content = EmbeddedScreenContent.blockEntity(screen, sourcePos);
+        WindowContent content = new HuiContainerContent(screen, sourcePos);
         HuiWindow restored = sourcePos == null ? null : this.pendingRestores.remove(sourcePos);
         if (restored != null) {
             restored.setContent(content);
@@ -306,7 +306,7 @@ public final class HuiDesktopScreen extends Screen {
         DesktopLayout.PageLayout page = this.layout.activePage();
         page.windows.clear();
         for (HuiWindow window : this.windows) {
-            EmbeddedScreenContent embedded = window.content() instanceof EmbeddedScreenContent content ? content : null;
+            MenuWindowContent embedded = window.content() instanceof MenuWindowContent content ? content : null;
             boolean restorableBlockEntity = window.ephemeral() && embedded != null && embedded.sourcePos() != null;
             if (window.ephemeral() && !restorableBlockEntity) {
                 continue;
@@ -441,7 +441,7 @@ public final class HuiDesktopScreen extends Screen {
 
     /** Sends the server the request to close this window's container menu (if it has one). */
     private void releaseBlockEntityMenu(HuiWindow window) {
-        if (!(window.content() instanceof EmbeddedScreenContent embedded) || embedded.menuContainerId() == 0) {
+        if (!(window.content() instanceof MenuWindowContent embedded) || embedded.menuContainerId() == 0) {
             return;
         }
         ClientPacketDistributor.sendToServer(new CloseMenuPayload(embedded.menuContainerId()));
@@ -456,7 +456,7 @@ public final class HuiDesktopScreen extends Screen {
      * menu is server backed (the server moves the stack during activation); the client-only creative inventory keeps its
      * carried stack, otherwise the item would disappear when moving the mouse over another window.
      */
-    private void activateContent(EmbeddedScreenContent content) {
+    private void activateContent(MenuWindowContent content) {
         if (this.activeContent != null && this.activeContent != content && !this.activeContent.serverBacked()
                 && !this.activeContent.screenMenu().getCarried().isEmpty()) {
             // A creative item is on the cursor: keep that window active so the stack stays visible and does not
@@ -474,7 +474,7 @@ public final class HuiDesktopScreen extends Screen {
     public void closeBlockEntityWindow(int containerId) {
         for (HuiWindow window : new ArrayList<>(this.windows)) {
             if (window.typeId().equals(HuiWindowTypes.BLOCK_ENTITY)
-                    && window.content() instanceof EmbeddedScreenContent embedded
+                    && window.content() instanceof MenuWindowContent embedded
                     && embedded.menuContainerId() == containerId) {
                 closeWindow(window);
             }
@@ -654,7 +654,7 @@ public final class HuiDesktopScreen extends Screen {
                 return true;
             }
             this.contentDragging = window;
-            if (window.content() instanceof EmbeddedScreenContent embedded) {
+            if (window.content() instanceof MenuWindowContent embedded) {
                 activateContent(embedded);
             }
             window.content().mouseClicked(event, window.contentX(), window.contentY(), doubleClick);
@@ -677,7 +677,7 @@ public final class HuiDesktopScreen extends Screen {
         for (int index = this.windows.size() - 1; index >= 0; index--) {
             HuiWindow window = this.windows.get(index);
             if (!window.minimized() && window.contains(mouseX, mouseY)) {
-                if (window.content() instanceof EmbeddedScreenContent embedded) {
+                if (window.content() instanceof MenuWindowContent embedded) {
                     activateContent(embedded);
                 }
                 return;
@@ -710,18 +710,18 @@ public final class HuiDesktopScreen extends Screen {
         if (this.contentDragging != null) {
             HuiWindow source = this.contentDragging;
             this.contentDragging = null;
-            if (source.content() instanceof EmbeddedScreenContent sourceContent
+            if (source.content() instanceof MenuWindowContent sourceContent
                     && sourceContent.serverBacked() && !sourceContent.screenMenu().getCarried().isEmpty()) {
                 HuiWindow target = windowAt(event.x(), event.y());
                 if (target != null && target != source
-                        && target.content() instanceof EmbeddedScreenContent targetContent
+                        && target.content() instanceof MenuWindowContent targetContent
                         && targetContent.serverBacked()) {
                     net.minecraft.world.item.ItemStack carried = sourceContent.screenMenu().getCarried().copy();
                     activateContent(targetContent);
                     // Keep the stack visible on the target window even if the click below is rejected by the menu.
                     targetContent.screenMenu().setCarried(carried);
-                    if (targetContent.isOverSlot((int) event.x(), (int) event.y(), target.contentX(),
-                            target.contentY())) {
+                    if (targetContent.slotIndexAt((int) event.x(), (int) event.y(), target.contentX(),
+                            target.contentY()) >= 0) {
                         targetContent.mouseClicked(event, target.contentX(), target.contentY(), false);
                     }
                     // Force a full state sync: if the target menu rejected the item it comes back to the cursor instead
@@ -742,10 +742,10 @@ public final class HuiDesktopScreen extends Screen {
      * server to insert a copy into that slot.
      */
     private boolean tryCreativeInsert(HuiWindow targetWindow, double mouseX, double mouseY) {
-        if (!(targetWindow.content() instanceof EmbeddedScreenContent target) || !target.serverBacked()) {
+        if (!(targetWindow.content() instanceof MenuWindowContent target) || !target.serverBacked()) {
             return false;
         }
-        EmbeddedScreenContent source = null;
+        MenuWindowContent source = null;
         if (this.activeContent != null && !this.activeContent.serverBacked()
                 && !this.activeContent.screenMenu().getCarried().isEmpty()) {
             source = this.activeContent;
