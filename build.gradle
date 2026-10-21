@@ -58,6 +58,10 @@ neoForge {
     runs {
         client {
             client()
+            // 调试用：`gradlew runClient -PquickPlay=<存档名>` 直接进入指定单人存档。
+            if (project.hasProperty('quickPlay')) {
+                programArguments.addAll '--quickPlaySingleplayer', project.property('quickPlay')
+            }
             // Comma-separated list of namespaces to load gametests from. Empty = all namespaces.
             systemProperty 'neoforge.enabledGameTestNamespaces', project.mod_id
         }

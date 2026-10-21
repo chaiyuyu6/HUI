@@ -2,8 +2,11 @@ package com.chai.hui.client;
 
 import com.chai.hui.HuiConfig;
 import com.chai.hui.HuiMod;
+import com.chai.hui.client.hud.HudLayoutManager;
 import com.chai.hui.client.hud.HuiHudLayer;
+import com.chai.hui.client.hud.editor.HudEditorScreen;
 import com.chai.hui.client.screen.HuiConfigScreen;
+import com.chai.hui.client.screen.HuiScreens;
 import net.minecraft.client.Minecraft;
 import net.minecraft.resources.Identifier;
 import net.neoforged.api.distmarker.Dist;
@@ -19,12 +22,12 @@ import net.neoforged.neoforge.common.NeoForge;
 /**
  * Client entry point of HUI.
  *
- * <p>Loads only on the physical client. It wires up the HUD layer, the key bindings, the in-game key handling and the
- * custom config screen.
+ * <p>Loads only on the physical client. It wires up the HUD layers, the HUD layout editor, the key bindings, the
+ * in-game key handling and the config screens.
  */
 @Mod(value = HuiMod.MOD_ID, dist = Dist.CLIENT)
 public final class HuiClient {
-    /** Id of the HUI HUD layer, also useful for other mods that want to order against it. */
+    /** Id of the HUI information panel layer. */
     public static final Identifier HUD_LAYER_ID = Identifier.fromNamespaceAndPath(HuiMod.MOD_ID, "info_hud");
 
     public HuiClient(ModContainer modContainer, IEventBus modEventBus) {
@@ -38,6 +41,9 @@ public final class HuiClient {
     }
 
     private void registerGuiLayers(RegisterGuiLayersEvent event) {
+        // Takes ownership of the vanilla HUD layers that can be re-arranged by the editor.
+        HudLayoutManager.get().initialize(event);
+        // The HUI information panel is an independent, optional layer; registered last so it draws on top.
         event.registerAboveAll(HUD_LAYER_ID, new HuiHudLayer());
     }
 
@@ -45,6 +51,7 @@ public final class HuiClient {
         event.registerCategory(HuiKeyMappings.CATEGORY);
         event.register(HuiKeyMappings.TOGGLE_HUD);
         event.register(HuiKeyMappings.OPEN_SETTINGS);
+        event.register(HuiKeyMappings.EDIT_HUD);
     }
 
     private void onClientTick(ClientTickEvent.Post event) {
@@ -60,8 +67,19 @@ public final class HuiClient {
 
         while (HuiKeyMappings.OPEN_SETTINGS.consumeClick()) {
             if (minecraft.gui.screen() == null) {
-                minecraft.gui.pushScreenLayer(new HuiConfigScreen());
+                HuiScreens.open(minecraft, new HuiConfigScreen());
             }
+        }
+
+        while (HuiKeyMappings.EDIT_HUD.consumeClick()) {
+            if (minecraft.gui.screen() == null && minecraft.player != null && !HudLayoutManager.get().isEditing()) {
+                HuiScreens.open(minecraft, new HudEditorScreen());
+            }
+        }
+
+        // Safety net: never leave a working layout behind if the editor screen disappeared without being closed.
+        if (HudLayoutManager.get().isEditing() && minecraft.gui.screen() == null) {
+            HudLayoutManager.get().cancel();
         }
     }
 }

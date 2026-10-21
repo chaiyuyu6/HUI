@@ -29,5 +29,22 @@
 
   "key.category.hui.main": "HUI",
   "key.hui.toggle_hud": "切换 HUD 信息面板",
-  "key.hui.open_settings": "打开 HUI 设置界面"
+  "key.hui.open_settings": "打开 HUI 设置界面",
+  "key.hui.edit_hud": "编辑 HUD 布局",
+
+  "hui.block.health": "生命值",
+  "hui.block.experience": "经验值",
+  "hui.block.effects": "药水效果",
+
+  "hui.editor.title": "HUD 布局编辑",
+  "hui.editor.hint": "空白处点击右键显示更多",
+  "hui.editor.block_label": "%s  (%s, %s)",
+  "hui.editor.hidden": "已隐藏",
+
+  "hui.menu.save_exit": "保存并退出",
+  "hui.menu.cancel": "取消",
+  "hui.menu.hui_config": "HUI 配置",
+  "hui.menu.hide": "隐藏该 HUD",
+  "hui.menu.show": "显示该 HUD",
+  "hui.menu.bring_front": "将该 HUD 置顶"
 }

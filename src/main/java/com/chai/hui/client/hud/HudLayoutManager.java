@@ -1,0 +1,268 @@
+package com.chai.hui.client.hud;
+
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+
+import com.chai.hui.HuiMod;
+import net.minecraft.client.DeltaTracker;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.client.player.LocalPlayer;
+import net.minecraft.resources.Identifier;
+import net.minecraft.world.effect.MobEffectInstance;
+import net.neoforged.neoforge.client.event.RegisterGuiLayersEvent;
+import net.neoforged.neoforge.client.gui.GuiLayer;
+import net.neoforged.neoforge.client.gui.VanillaGuiLayers;
+
+/**
+ * Takes ownership of the vanilla HUD layers that HUI can re-arrange, applies the saved layout every frame, and exposes
+ * the same data to the HUD editor.
+ *
+ * <p>Why the vanilla layers are replaced: NeoForge lets mods wrap a HUD layer, but not reorder layers. To support
+ * "bring to front" HUI captures the original layers, replaces them with no-op layers and draws the captured layers
+ * itself from a single root layer whose order is driven by {@link HudLayout}.
+ *
+ * <p>The layers next to the editable blocks (armour, food, vehicle health, air, selected item name) are captured as
+ * well, because vanilla stacks them using {@code Hud#leftHeight} / {@code Hud#rightHeight}, which the health layer
+ * updates while it renders. Rendering them in the same order as vanilla keeps their positions identical.
+ */
+public final class HudLayoutManager {
+    public static final Identifier HEALTH = Identifier.fromNamespaceAndPath(HuiMod.MOD_ID, "health");
+    public static final Identifier EXPERIENCE = Identifier.fromNamespaceAndPath(HuiMod.MOD_ID, "experience");
+    public static final Identifier EFFECTS = Identifier.fromNamespaceAndPath(HuiMod.MOD_ID, "effects");
+
+    /** Id of the root layer HUI registers above everything else. */
+    public static final Identifier ROOT_LAYER = Identifier.fromNamespaceAndPath(HuiMod.MOD_ID, "hud_layout");
+
+    private static final GuiLayer NOOP_LAYER = (graphics, deltaTracker) -> {};
+    /** Draws the health layer far outside the screen, used to let vanilla update its layout counters. */
+    private static final float OFFSCREEN = -10000.0F;
+
+    private static final HudLayoutManager INSTANCE = new HudLayoutManager();
+
+    private final Map<Identifier, GuiLayer> capturedLayers = new LinkedHashMap<>();
+    private final Map<Identifier, HudBlock> blocks = new LinkedHashMap<>();
+
+    private HudLayout active = new HudLayout();
+    private HudLayout working;
+
+    private HudLayoutManager() {}
+
+    public static HudLayoutManager get() {
+        return INSTANCE;
+    }
+
+    /** Called from the client entry point on the mod event bus. Captures layers and registers the root layer. */
+    public void initialize(RegisterGuiLayersEvent event) {
+        if (!this.blocks.isEmpty()) {
+            return;
+        }
+
+        capture(event, VanillaGuiLayers.PLAYER_HEALTH);
+        capture(event, VanillaGuiLayers.ARMOR_LEVEL);
+        capture(event, VanillaGuiLayers.FOOD_LEVEL);
+        capture(event, VanillaGuiLayers.VEHICLE_HEALTH);
+        capture(event, VanillaGuiLayers.AIR_LEVEL);
+        capture(event, VanillaGuiLayers.CONTEXTUAL_INFO_BAR_BACKGROUND);
+        capture(event, VanillaGuiLayers.EXPERIENCE_LEVEL);
+        capture(event, VanillaGuiLayers.CONTEXTUAL_INFO_BAR);
+        capture(event, VanillaGuiLayers.SELECTED_ITEM_NAME);
+        capture(event, VanillaGuiLayers.EFFECTS);
+
+        this.blocks.put(HEALTH, new HealthHudBlock(HEALTH, "hui.block.health",
+                layers(VanillaGuiLayers.PLAYER_HEALTH)));
+        this.blocks.put(EXPERIENCE, new SimpleHudBlock(EXPERIENCE, "hui.block.experience",
+                layers(VanillaGuiLayers.CONTEXTUAL_INFO_BAR_BACKGROUND, VanillaGuiLayers.EXPERIENCE_LEVEL,
+                        VanillaGuiLayers.CONTEXTUAL_INFO_BAR),
+                HudLayoutManager::experienceBounds));
+        this.blocks.put(EFFECTS, new SimpleHudBlock(EFFECTS, "hui.block.effects",
+                layers(VanillaGuiLayers.EFFECTS),
+                HudLayoutManager::effectsBounds));
+
+        this.active = HudLayoutStore.load(this.blocks.keySet());
+        event.registerAboveAll(ROOT_LAYER, this::renderHud);
+        HuiMod.LOGGER.info("HUI HUD layout manager initialised with {} movable blocks", this.blocks.size());
+    }
+
+    private void capture(RegisterGuiLayersEvent event, Identifier id) {
+        event.wrapLayer(id, original -> {
+            this.capturedLayers.put(id, original);
+            return NOOP_LAYER;
+        });
+    }
+
+    private List<GuiLayer> layers(Identifier... ids) {
+        List<GuiLayer> layers = new ArrayList<>(ids.length);
+        for (Identifier id : ids) {
+            GuiLayer layer = this.capturedLayers.get(id);
+            if (layer != null) {
+                layers.add(layer);
+            } else {
+                HuiMod.LOGGER.warn("HUD layer {} was not captured, block will be incomplete", id);
+            }
+        }
+        return layers;
+    }
+
+    // --- Rendering -------------------------------------------------------------------------
+
+    private void renderHud(GuiGraphicsExtractor graphics, DeltaTracker deltaTracker) {
+        if (this.working != null) {
+            // The editor renders its own preview of the blocks, so the in-game HUD stays clean.
+            return;
+        }
+
+        Minecraft minecraft = Minecraft.getInstance();
+        if (minecraft.player == null || minecraft.gui.hud.isHidden()) {
+            return;
+        }
+
+        HudLayout layout = this.active;
+        boolean survivalHud = minecraft.gameMode != null && minecraft.gameMode.canHurtPlayer();
+
+        if (survivalHud) {
+            // Vanilla draws the health layer first and adds 10 to leftHeight while doing so. Run it off screen once
+            // so the armour/food/air layers below keep their vanilla positions, then paint it at its real position
+            // with the other editable blocks.
+            renderLayer(graphics, deltaTracker, VanillaGuiLayers.PLAYER_HEALTH, OFFSCREEN, OFFSCREEN);
+            renderLayer(graphics, deltaTracker, VanillaGuiLayers.ARMOR_LEVEL, 0, 0);
+            renderLayer(graphics, deltaTracker, VanillaGuiLayers.FOOD_LEVEL, 0, 0);
+        }
+        renderLayer(graphics, deltaTracker, VanillaGuiLayers.VEHICLE_HEALTH, 0, 0);
+        if (survivalHud) {
+            renderLayer(graphics, deltaTracker, VanillaGuiLayers.AIR_LEVEL, 0, 0);
+        }
+        renderLayer(graphics, deltaTracker, VanillaGuiLayers.SELECTED_ITEM_NAME, 0, 0);
+
+        for (Identifier id : layout.ordered(this.blocks.keySet())) {
+            if (layout.isHidden(id)) {
+                continue;
+            }
+            HudBlock block = this.blocks.get(id);
+            if (block != null) {
+                block.render(graphics, deltaTracker, layout.offsetX(id), layout.offsetY(id));
+            }
+        }
+    }
+
+    private void renderLayer(GuiGraphicsExtractor graphics, DeltaTracker deltaTracker, Identifier id, float dx, float dy) {
+        GuiLayer layer = this.capturedLayers.get(id);
+        if (layer == null) {
+            return;
+        }
+        graphics.pose().pushMatrix();
+        graphics.pose().translate(dx, dy);
+        try {
+            layer.render(graphics, deltaTracker);
+        } finally {
+            graphics.pose().popMatrix();
+        }
+    }
+
+    /** Renders a single block with its configured offsets; used by the editor preview. */
+    public void renderBlock(GuiGraphicsExtractor graphics, DeltaTracker deltaTracker, HudBlock block, HudLayout layout) {
+        block.render(graphics, deltaTracker, layout.offsetX(block.id()), layout.offsetY(block.id()));
+    }
+
+    // --- Layout state ----------------------------------------------------------------------
+
+    public void beginEditing() {
+        if (this.working == null) {
+            this.working = this.active.copy();
+        }
+    }
+
+    /** Persists the working layout and makes it the active one. */
+    public void commit() {
+        if (this.working == null) {
+            return;
+        }
+        this.active = this.working;
+        this.working = null;
+        HudLayoutStore.save(this.active);
+    }
+
+    /** Throws the working layout away. */
+    public void cancel() {
+        this.working = null;
+    }
+
+    public boolean isEditing() {
+        return this.working != null;
+    }
+
+    /** @return the layout that should currently be used (working copy while editing, else the saved one). */
+    public HudLayout layout() {
+        return this.working != null ? this.working : this.active;
+    }
+
+    // --- Block queries used by the editor ---------------------------------------------------
+
+    public Collection<HudBlock> blocks() {
+        return List.copyOf(this.blocks.values());
+    }
+
+    public List<HudBlock> blocksInDrawOrder(HudLayout layout) {
+        List<HudBlock> ordered = new ArrayList<>(this.blocks.size());
+        for (Identifier id : layout.ordered(this.blocks.keySet())) {
+            HudBlock block = this.blocks.get(id);
+            if (block != null) {
+                ordered.add(block);
+            }
+        }
+        return ordered;
+    }
+
+    public HudRect boundsOf(HudBlock block, HudLayout layout, int screenWidth, int screenHeight) {
+        return block.bounds(screenWidth, screenHeight).offset(layout.offsetX(block.id()), layout.offsetY(block.id()));
+    }
+
+    /** @return the topmost block under the given point, or {@code null} if the point is empty. */
+    public HudBlock blockAt(double mouseX, double mouseY, HudLayout layout, int screenWidth, int screenHeight) {
+        List<HudBlock> ordered = blocksInDrawOrder(layout);
+        for (int index = ordered.size() - 1; index >= 0; index--) {
+            HudBlock block = ordered.get(index);
+            if (boundsOf(block, layout, screenWidth, screenHeight).contains(mouseX, mouseY)) {
+                return block;
+            }
+        }
+        return null;
+    }
+
+    // --- Default bounds --------------------------------------------------------------------
+
+    /** Experience bar: {@code ContextualBar} draws at {@code ((width - 182) / 2, height - 29)}, the level text above it. */
+    private static HudRect experienceBounds(int screenWidth, int screenHeight) {
+        return new HudRect((screenWidth - 182) / 2, screenHeight - 36, 182, 13);
+    }
+
+    /** Potion effects: 24x24 icons in 25px columns starting at the top right corner. */
+    private static HudRect effectsBounds(int screenWidth, int screenHeight) {
+        int beneficial = 0;
+        int harmful = 0;
+        LocalPlayer player = Minecraft.getInstance().player;
+        if (player != null) {
+            for (MobEffectInstance effect : player.getActiveEffects()) {
+                if (!effect.showIcon()) {
+                    continue;
+                }
+                if (effect.getEffect().value().isBeneficial()) {
+                    beneficial++;
+                } else {
+                    harmful++;
+                }
+            }
+        }
+
+        int columns = Math.max(beneficial, harmful);
+        int rows = (beneficial > 0 ? 1 : 0) + (harmful > 0 ? 1 : 0);
+        if (columns == 0) {
+            // Placeholder so the block stays selectable in the editor when no effect is active.
+            return new HudRect(screenWidth - 25, 1, 24, 24);
+        }
+        return new HudRect(screenWidth - 25 * columns, 1, 25 * columns, 26 * rows - 2);
+    }
+}

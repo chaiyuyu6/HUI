@@ -29,5 +29,22 @@
 
   "key.category.hui.main": "HUI",
   "key.hui.toggle_hud": "Toggle HUD panel",
-  "key.hui.open_settings": "Open HUI settings"
+  "key.hui.open_settings": "Open HUI settings",
+  "key.hui.edit_hud": "Edit HUD layout",
+
+  "hui.block.health": "Health",
+  "hui.block.experience": "Experience",
+  "hui.block.effects": "Potion effects",
+
+  "hui.editor.title": "HUD Editor",
+  "hui.editor.hint": "Right-click empty space for more",
+  "hui.editor.block_label": "%s  (%s, %s)",
+  "hui.editor.hidden": "Hidden",
+
+  "hui.menu.save_exit": "Save & exit",
+  "hui.menu.cancel": "Cancel",
+  "hui.menu.hui_config": "HUI settings",
+  "hui.menu.hide": "Hide this HUD",
+  "hui.menu.show": "Show this HUD",
+  "hui.menu.bring_front": "Bring to front"
 }
