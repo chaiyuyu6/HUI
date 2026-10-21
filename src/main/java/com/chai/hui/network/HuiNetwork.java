@@ -102,8 +102,10 @@ public final class HuiNetwork {
                 }
                 menu.setCarried(carried);
                 player.containerMenu = menu;
-                menu.broadcastFullState();
             }
+            // Always resync: the client asks for this after a cross-window drag, and a full state also restores the
+            // carried stack if a click was rejected by the target menu.
+            menu.broadcastFullState();
         });
     }
 

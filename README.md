@@ -186,6 +186,10 @@ Minecraft **26.3** / NeoForge **26.3.0.90** 的 GUI / HUD 修改模组。
 
 ![手持物品拖到其它窗口上方时仍绘制在最上层](docs/windowing-drag-overlay.png)
 
+![生存模式：默认物品栏 + 酿造台组合](docs/windowing-survival-pair.png)
+
+![被目标槽位拒绝后物品仍留在光标上（不再消失）](docs/windowing-drag-resync.png)
+
 ![窗口重命名（Ui 文本输入）](docs/windowing-rename.png)
 
 ## 构建

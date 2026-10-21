@@ -708,11 +708,15 @@ public final class HuiDesktopScreen extends Screen {
                         && targetContent.serverBacked()) {
                     net.minecraft.world.item.ItemStack carried = sourceContent.screenMenu().getCarried().copy();
                     activateContent(targetContent);
+                    // Keep the stack visible on the target window even if the click below is rejected by the menu.
+                    targetContent.screenMenu().setCarried(carried);
                     if (targetContent.isOverSlot((int) event.x(), (int) event.y(), target.contentX(),
                             target.contentY())) {
-                        targetContent.screenMenu().setCarried(carried);
                         targetContent.mouseClicked(event, target.contentX(), target.contentY(), false);
                     }
+                    // Force a full state sync: if the target menu rejected the item it comes back to the cursor instead
+                    // of disappearing until the next click.
+                    targetContent.activate();
                     return true;
                 }
             }
