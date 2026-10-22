@@ -171,6 +171,14 @@ public final class HuiDesktopScreen extends Screen {
         if (!this.built) {
             this.layout = DesktopLayoutStore.load();
             this.layout.ensurePages();
+            if (this.requestedInventoryType != null) {
+                // Jump to the desktop page that already hosts this inventory kind instead of reopening whichever page
+                // was active last time.
+                int page = findPageWithInventoryType(this.requestedInventoryType);
+                if (page >= 0) {
+                    this.layout.activePage = page;
+                }
+            }
             rebuildActivePage();
             this.built = true;
             if (this.requestedInventoryType != null) {
@@ -600,6 +608,19 @@ public final class HuiDesktopScreen extends Screen {
      * Opens an inventory style window from the desktop menus. When the current page already has an inventory window a
      * new desktop page is created first, so the existing inventory window stays on the previous page.
      */
+    /** @return the index of the page that already has a window of the given inventory type, or -1. */
+    private int findPageWithInventoryType(Identifier type) {
+        String wanted = type.toString();
+        for (int index = 0; index < this.layout.pages.size(); index++) {
+            for (DesktopLayout.WindowLayout stored : this.layout.pages.get(index).windows) {
+                if (wanted.equals(stored.type)) {
+                    return index;
+                }
+            }
+        }
+        return -1;
+    }
+
     private void openInventoryWindow(Identifier type) {
         for (HuiWindow window : new ArrayList<>(this.windows)) {
             if (!HuiWindowTypes.isInventoryType(window.typeId())) {
