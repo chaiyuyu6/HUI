@@ -78,6 +78,7 @@ public final class HuiClient {
                 com.chai.hui.menu.HuiMenus.CREATIVE.get();
         event.<com.chai.hui.menu.HuiCreativeMenu, com.chai.hui.client.screen.HuiCreativeScreen>register(type,
                 (menu, inventory, title) -> new com.chai.hui.client.screen.HuiCreativeScreen(menu, inventory, title));
+        com.chai.hui.HuiMod.LOGGER.info("[HUI] registered client screen for hui:creative");
     }
 
     private void registerKeyMappings(RegisterKeyMappingsEvent event) {
@@ -131,6 +132,7 @@ public final class HuiClient {
     private void onScreenOpening(ScreenEvent.Opening event) {
         // Server side HUI creative menu: swap the vanilla stub screen for the HUI window content.
         if (event.getNewScreen() instanceof com.chai.hui.client.screen.HuiCreativeScreen creative) {
+            com.chai.hui.HuiMod.LOGGER.info("[HUI] creative screen opened, swapping window content");
             com.chai.hui.client.windowing.CreativeOpeningContent.markOpened();
             com.chai.hui.client.windowing.WindowContent content = new com.chai.hui.client.windowing.CreativeWindowContent(
                     creative.getMenu());

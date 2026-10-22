@@ -66,6 +66,7 @@
   "hui.desktop.hint": "F8 / ESC closes the desktop - drag the title bar - right-click empty space for the menu",
   "hui.window.inventory": "Inventory",
   "hui.window.creative_inventory": "Creative inventory",
+  "hui.creative.opening": "Opening creative inventory…",
   "hui.window.default_inventory": "Default inventory",
   "hui.window.block_entity.opening": "Opening...",
   "hui.window.inventory_unavailable": "This inventory window is not available in the current game mode.",

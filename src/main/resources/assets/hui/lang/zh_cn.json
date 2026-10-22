@@ -66,6 +66,7 @@
   "hui.desktop.hint": "F8 / ESC 关闭桌面 · 拖动标题栏移动 · 右键空白处打开菜单",
   "hui.window.inventory": "物品栏",
   "hui.window.creative_inventory": "创造物品栏",
+  "hui.creative.opening": "正在打开创造物品栏…",
   "hui.window.default_inventory": "默认物品栏",
   "hui.window.block_entity.opening": "打开中…",
   "hui.window.inventory_unavailable": "当前游戏模式下不能使用该物品栏窗口。",

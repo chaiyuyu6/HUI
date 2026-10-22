@@ -213,11 +213,13 @@ public final class HuiNetwork {
     private static void handleOpenCreative(OpenCreativePayload payload, IPayloadContext context) {
         context.enqueueWork(() -> {
             if (!(context.player() instanceof ServerPlayer player) || !player.hasInfiniteMaterials()) {
+                HuiMod.LOGGER.info("[HUI] open creative ignored (player/creative check failed)");
                 return;
             }
-            player.openMenu(new net.minecraft.world.SimpleMenuProvider(
+            java.util.OptionalInt opened = player.openMenu(new net.minecraft.world.SimpleMenuProvider(
                     (containerId, inventory, p) -> new HuiCreativeMenu(containerId, inventory),
                     Component.translatable("hui.window.creative_inventory")));
+            HuiMod.LOGGER.info("[HUI] open creative requested, opened={}", opened);
         });
     }
 

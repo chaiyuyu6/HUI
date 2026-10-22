@@ -17,6 +17,7 @@ import net.neoforged.neoforge.client.network.ClientPacketDistributor;
  */
 public final class CreativeOpeningContent implements WindowContent {
     private static boolean requested;
+    private int ticks;
 
     public static void markOpened() {
         requested = true;
@@ -41,6 +42,15 @@ public final class CreativeOpeningContent implements WindowContent {
     public void init(int screenWidth, int screenHeight) {
         if (!requested) {
             requested = true;
+            ClientPacketDistributor.sendToServer(new OpenCreativePayload());
+        }
+    }
+
+    @Override
+    public void tick() {
+        this.ticks++;
+        if (this.ticks > 0 && this.ticks % 40 == 0) {
+            // The menu open packet may have been missed (e.g. another menu was closed in the same tick): retry.
             ClientPacketDistributor.sendToServer(new OpenCreativePayload());
         }
     }
