@@ -183,3 +183,20 @@ HuiBlockUiServer.register(MyBlockEntities.MACHINE.get(), new HuiBlockUiServer.Pr
   销毁槽、玩家预览），因此 HUI 窗口里的创造物品栏与原生 100% 一致，同时仍在 HUI 桌面/窗口体系内；
 - 容器窗口下一步准备同样处理：把原版 `AbstractContainerScreen` 的背景/槽位/标签渲染代码复用到 HUI 窗口中，
   只在窗口层做裁剪与配对，避免手写 UI 与原版产生差异。
+
+## 11. 纯客户端 UI 根治第一步：ClientMenuSession
+
+创造物品栏这类纯客户端菜单没有服务端菜单，carried 只存在于客户端；任何服务端全量同步（carried 为空）都会把它清掉，
+而它的 `containerId` 又和 `inventoryMenu` 同为 0，同步包还可能被错误应用到创造菜单上。
+
+本轮实现客户端菜单隔离核心：
+
+- 新增 `ClientMenuSession`：影子保存 carried；`reconcile()` 在每帧渲染/激活时发现 live carried 被清空就恢复，
+  `clear()` 在窗口关闭时显式清空；
+- 创造物品栏窗口持有 session：`extract/activate/removed` 全部走 session；窗口关闭时清空，避免幽灵物品；
+- 创造窗口创建时如果客户端 `containerMenu` 是纯客户端菜单（`getType()==null`），把它切回 `inventoryMenu`，
+  让 containerId=0 的同步包永远落在真实服务端菜单上，不再污染创造选择页；
+- 激活模型保持：client-only 窗口不参与 `ActivateMenuPayload`/服务端菜单切换（`activate()` 提前返回）。
+
+后续（未完成）：创造栏改成 HUI 自绘（复用原版贴图/布局代码）+ session 承载 carried，跨窗口放置统一走服务端校验的
+`CreativeInsertPayload` 桥；其它模组的纯客户端窗口可复用同一 session API。

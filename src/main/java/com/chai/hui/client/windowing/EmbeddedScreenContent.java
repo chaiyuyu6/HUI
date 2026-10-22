@@ -61,7 +61,7 @@ public final class EmbeddedScreenContent implements MenuWindowContent {
 
     /**
      * A block entity container window: the vanilla container screen cropped to the container's own slots, so the player
-     * inventory part of the screen is not shown (requirement: "裁掉物品栏" for block entity windows in HUI mode).
+     * inventory part of the screen is not shown (requirement: "瑁佹帀鐗╁搧鏍? for block entity windows in HUI mode).
      */
     public static EmbeddedScreenContent blockEntity(AbstractContainerScreen<?> screen) {
         return blockEntity(screen, null);
@@ -128,6 +128,9 @@ public final class EmbeddedScreenContent implements MenuWindowContent {
         if (!this.serverBacked) {
             // The creative inventory is a client only menu (the server never opens it). Activating it would switch
             // player.containerMenu to a menu the server does not know and break item picking.
+            if (this.session != null) {
+                this.session.reconcile(this.screen.getMenu());
+            }
             return;
         }
         int containerId = menuContainerId();
@@ -160,8 +163,18 @@ public final class EmbeddedScreenContent implements MenuWindowContent {
     public static EmbeddedScreenContent creative(LocalPlayer player) {
         CreativeModeInventoryScreen screen = new CreativeModeInventoryScreen(player,
                 player.connection.enabledFeatures(), Minecraft.getInstance().options.operatorItemsTab().get());
-        return new EmbeddedScreenContent(screen, 0, -CREATIVE_TOP_MARGIN, screen.getImageWidth(),
-                screen.getImageHeight() + CREATIVE_TOP_MARGIN + CREATIVE_BOTTOM_MARGIN, null, false);
+        EmbeddedScreenContent content = new EmbeddedScreenContent(screen, 0, -CREATIVE_TOP_MARGIN,
+                screen.getImageWidth(), screen.getImageHeight() + CREATIVE_TOP_MARGIN + CREATIVE_BOTTOM_MARGIN,
+                null, false);
+        content.session = new ClientMenuSession();
+        // The creative picker menu shares containerId 0 with the player inventory menu. Keep the client containerMenu
+        // on the real server menu so id 0 sync packets can never be applied to the client only picker menu.
+        Minecraft minecraft = Minecraft.getInstance();
+        if (minecraft.player != null && minecraft.player.containerMenu != minecraft.player.inventoryMenu
+                && minecraft.player.containerMenu.getType() == null) {
+            minecraft.player.containerMenu = minecraft.player.inventoryMenu;
+        }
+        return content;
     }
 
     private final AbstractContainerScreen<?> screen;
@@ -173,6 +186,7 @@ public final class EmbeddedScreenContent implements MenuWindowContent {
     /** True when the menu also exists on the server (inventory and block entity menus); creative is client only. */
     private final boolean serverBacked;
     private boolean initialized;
+    private @Nullable ClientMenuSession session;
     private @Nullable net.minecraft.core.BlockPos sourcePos;
 
     public EmbeddedScreenContent(AbstractContainerScreen<?> screen, int srcX, int srcY, int srcWidth, int srcHeight,
@@ -212,6 +226,9 @@ public final class EmbeddedScreenContent implements MenuWindowContent {
             int originY) {
         if (!this.initialized) {
             return;
+        }
+        if (this.session != null) {
+            this.session.reconcile(this.screen.getMenu());
         }
 
         int deltaX = this.deltaX(originX);
@@ -319,6 +336,9 @@ public final class EmbeddedScreenContent implements MenuWindowContent {
 
     @Override
     public void removed() {
+        if (this.session != null) {
+            this.session.clear(this.screen.getMenu());
+        }
         this.screen.removed();
     }
 
