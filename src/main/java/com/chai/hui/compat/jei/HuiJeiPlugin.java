@@ -60,13 +60,6 @@ public final class HuiJeiPlugin implements IModPlugin {
         registration.addGhostIngredientHandler(HuiDesktopScreen.class, new DesktopGhostHandler());
     }
 
-    /**
-     * Toggle for the experimental embedded recipe window. Off by default (the embedded screen did not render well);
-     * enable with -Dhui.jei.embedded_recipes=true while the prototype is being iterated on.
-     */
-    private static boolean embeddedRecipesEnabled() {
-        return "true".equalsIgnoreCase(System.getProperty("hui.jei.embedded_recipes", "false"));
-    }
 
     @Override
     public void onRuntimeAvailable(IJeiRuntime runtime) {
@@ -147,14 +140,6 @@ public final class HuiJeiPlugin implements IModPlugin {
                     HuiMod.LOGGER.info("[HUI] R on HUI slot, opened the HUI recipe browser");
                     return;
                 }
-            }
-            if (embeddedRecipesEnabled() && event.getCurrentScreen() instanceof HuiDesktopScreen desktop) {
-                // Experimental: show the JEI recipe screen as a window inside the HUI desktop instead of full screen.
-                event.setNewScreen(desktop);
-                desktop.queueCustomWindow(Component.translatable("hui.window.jei_recipes"),
-                        new com.chai.hui.client.windowing.VirtualScreenWindowContent(recipesGui, 420, 320));
-                HuiMod.LOGGER.info("[HUI] JEI recipes embedded as a HUI window");
-                return;
             }
             HuiMod.LOGGER.info("[HUI] JEI recipes gui opening, current={}", event.getCurrentScreen());
             if (event.getCurrentScreen() instanceof HuiDesktopScreen desktop) {

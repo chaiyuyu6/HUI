@@ -73,8 +73,6 @@ public final class HuiDesktopScreen extends Screen {
     private boolean preserveOnExternalScreen;
     private int lastMouseX;
     private int lastMouseY;
-    private final java.util.List<net.minecraft.network.chat.Component> pendingCustomTitles = new java.util.ArrayList<>();
-    private final java.util.List<WindowContent> pendingCustomContents = new java.util.ArrayList<>();
     private @Nullable net.minecraft.core.BlockPos pendingBlockUiPos;
     private @Nullable Component pendingBlockUiTitle;
     private @Nullable WindowContent pendingBlockUiContent;
@@ -102,14 +100,6 @@ public final class HuiDesktopScreen extends Screen {
             @Nullable net.minecraft.core.BlockPos pos) {
         HuiDesktopScreen desktop = new HuiDesktopScreen(null);
         desktop.queueContainerWindow(screen, pos);
-        return desktop;
-    }
-
-    /** Same as {@link #openWithContainer} but the window is session only (not written to the layout file). */
-    public static HuiDesktopScreen openWithTransientContainer(AbstractContainerScreen<?> screen,
-            @Nullable net.minecraft.core.BlockPos pos) {
-        HuiDesktopScreen desktop = new HuiDesktopScreen(null);
-        desktop.queueContainerWindow(screen, pos, false);
         return desktop;
     }
 
@@ -204,49 +194,34 @@ public final class HuiDesktopScreen extends Screen {
             this.pendingBlockUiContent = null;
         }
         ensureMachineCompanions();
-        flushPendingCustomWindows();
         clampAllWindows();
         for (HuiWindow window : this.windows) {
             window.content().init(this.width, this.height);
         }
     }
 
-    /** Makes sure every machine window on the page is paired with the inventory companion. */
-
-    /** Queues a session window with arbitrary content (e.g. an embedded external screen); added on the next init. */
+    /** Queues a session window with arbitrary content (e.g. the recipe browser) onto the active page. */
     public void queueCustomWindow(net.minecraft.network.chat.Component title, WindowContent content) {
-        if (this.built) {
-            addCustomWindowNow(title, content);
-            return;
-        }
-        this.pendingCustomTitles.add(title);
-        this.pendingCustomContents.add(content);
+        addCustomWindowNow(title, content);
     }
 
     private void addCustomWindowNow(net.minecraft.network.chat.Component title, WindowContent content) {
         HuiWindow window = new HuiWindow(java.util.UUID.randomUUID().toString(), HuiWindowTypes.RECIPE_BROWSER,
                 title, content);
-        window.setEphemeral(content instanceof com.chai.hui.client.windowing.VirtualScreenWindowContent);
+        window.setEphemeral(false);
         int cascade = this.windows.size() % 6;
         window.setPosition(Math.max(0, (this.width - window.width()) / 2 - 60 + cascade * 18),
                 Math.max(TAB_HEIGHT + 8, (this.height - window.height()) / 2 - 40 + cascade * 18));
         clamp(window);
         content.init(this.width, this.height);
         HuiWindow previousFocused = this.focused;
+        this.windows.add(window);
         if (previousFocused == null || !(previousFocused.content() instanceof MenuWindowContent)) {
             bringToFront(window);
         }
-        bringToFront(window);
     }
 
-    private void flushPendingCustomWindows() {
-        while (!this.pendingCustomContents.isEmpty()) {
-            net.minecraft.network.chat.Component title = this.pendingCustomTitles.remove(0);
-            WindowContent content = this.pendingCustomContents.remove(0);
-            addCustomWindowNow(title, content);
-        }
-    }
-
+    /** Makes sure every machine window on the page is paired with the inventory companion. */
     private void ensureMachineCompanions() {
         for (HuiWindow window : new ArrayList<>(this.windows)) {
             boolean machine = window.typeId().equals(HuiWindowTypes.BLOCK_ENTITY)
@@ -478,17 +453,6 @@ public final class HuiDesktopScreen extends Screen {
         }
     }
 
-    private void ensureInventoryCompanion() {
-        Identifier desired = HuiWindowTypes.DEFAULT_INVENTORY;
-        HuiWindow current = findInventoryWindow();
-        if (current != null && current.typeId().equals(desired)) {
-            return;
-        }
-        if (current != null) {
-            closeWindow(current);
-        }
-        addWindow(desired);
-    }
 
     /** Removes a restore placeholder whose container could not be opened anymore. */
     public void dropPendingRestore(net.minecraft.core.BlockPos pos) {
@@ -697,8 +661,7 @@ public final class HuiDesktopScreen extends Screen {
      * new desktop page is created first, so the existing inventory window stays on the previous page.
      */
     private static boolean isRecipeBrowserType(String type) {
-        return HuiWindowTypes.RECIPE_BROWSER.toString().equals(type)
-                || HuiWindowTypes.JEI_RECIPES.toString().equals(type);
+        return HuiWindowTypes.RECIPE_BROWSER.toString().equals(type);
     }
 
     private static boolean isMachineWindowType(String type) {
@@ -1162,20 +1125,6 @@ public final class HuiDesktopScreen extends Screen {
      * (creative inventory) before the click is forwarded: the server menu drops its copy and the client window receives
      * it as its own carried stack, otherwise the stack would exist twice (slot + still following the cursor).
      */
-    private void handOverServerCarriedToClientOnlyWindow() {
-        net.minecraft.client.Minecraft minecraft = this.minecraft;
-        if (minecraft == null || minecraft.player == null) {
-            return;
-        }
-        net.minecraft.world.inventory.AbstractContainerMenu menu = minecraft.player.containerMenu;
-        if (menu == minecraft.player.inventoryMenu || menu.getCarried().isEmpty()) {
-            return;
-        }
-        net.minecraft.world.item.ItemStack carried = menu.getCarried().copy();
-        ClientPacketDistributor.sendToServer(new com.chai.hui.network.ClearCarriedPayload(menu.containerId));
-        menu.setCarried(net.minecraft.world.item.ItemStack.EMPTY);
-        minecraft.player.inventoryMenu.setCarried(carried);
-    }
 
     private @Nullable HuiWindow windowAt(double mouseX, double mouseY) {
         for (int index = this.windows.size() - 1; index >= 0; index--) {
@@ -1187,15 +1136,6 @@ public final class HuiDesktopScreen extends Screen {
         return null;
     }
 
-    /**
-     * Keeps the desktop state (windows, open menus) when another screen temporarily replaces it, e.g. JEI's recipes GUI
-     * opened for a recipe transfer. The desktop is shown again when that external screen closes.
-     */
-    public void preserveAcrossExternalScreen() {
-        this.preserveOnExternalScreen = true;
-    }
-
-    /** Captures the current page before an external screen (JEI) replaces the desktop. */
     public void prepareExternalScreen() {
         this.preserveOnExternalScreen = true;
         captureActivePage();
@@ -1510,10 +1450,6 @@ public final class HuiDesktopScreen extends Screen {
         onClose();
     }
 
-    private void toggleHuiInventory() {
-        this.layout.huiInventory = !this.layout.huiInventory;
-        DesktopLayoutStore.save(this.layout);
-    }
 
     private static Component onOff(boolean value) {
         return Component.translatable(value ? "hui.value.on" : "hui.value.off");

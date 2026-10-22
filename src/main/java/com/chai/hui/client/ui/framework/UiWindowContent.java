@@ -10,7 +10,6 @@ import net.minecraft.client.input.CharacterEvent;
 import net.minecraft.client.input.KeyEvent;
 import net.minecraft.client.input.MouseButtonEvent;
 import com.chai.hui.client.windowing.WindowContent;
-import com.chai.hui.client.windowing.ui.GuiTextures;
 import org.jetbrains.annotations.Nullable;
 
 /**

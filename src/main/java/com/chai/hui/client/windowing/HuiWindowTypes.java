@@ -32,8 +32,6 @@ public final class HuiWindowTypes {
     public static final Identifier BLOCK_ENTITY = Identifier.fromNamespaceAndPath(HuiMod.MOD_ID, "block_entity");
     public static final Identifier DEMO = Identifier.fromNamespaceAndPath(HuiMod.MOD_ID, "demo");
     public static final Identifier PROPERTIES = Identifier.fromNamespaceAndPath(HuiMod.MOD_ID, "properties");
-    /** Session only window hosting an external screen (e.g. the JEI recipe screen). */
-    public static final Identifier JEI_RECIPES = Identifier.fromNamespaceAndPath(HuiMod.MOD_ID, "jei_recipes");
     /** HUI native recipe browser window. */
     public static final Identifier RECIPE_BROWSER = Identifier.fromNamespaceAndPath(HuiMod.MOD_ID, "recipe_browser");
 
@@ -99,8 +97,6 @@ public final class HuiWindowTypes {
     static {
         register(WindowType.translatable(RECIPE_BROWSER, "hui.window.recipe_browser",
                 () -> new TextWindowContent(List.of(Component.translatable("hui.window.recipe_browser")), 200, 24)));
-        register(WindowType.translatable(JEI_RECIPES, "hui.window.jei_recipes",
-                () -> new TextWindowContent(List.of(Component.translatable("hui.window.jei_recipes")), 200, 24)));
     }
 
     public static void register(WindowType type) {
