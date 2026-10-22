@@ -5,6 +5,7 @@ import java.util.Optional;
 
 import com.chai.hui.HuiMod;
 import com.chai.hui.client.windowing.HuiDesktopScreen;
+import com.chai.hui.client.windowing.WindowContent;
 import mezz.jei.api.IModPlugin;
 import mezz.jei.api.JeiPlugin;
 import mezz.jei.api.constants.VanillaTypes;
@@ -114,6 +115,23 @@ public final class HuiJeiPlugin implements IModPlugin {
         }
         return false;
     }
+
+    /** Recreates a persisted recipe browser window from its saved focus data ("R:item_id" / "U:item_id"). */
+    public static @Nullable WindowContent createRecipeBrowserContent(String data) {
+        if (runtime == null || data == null || data.length() < 3) {
+            return null;
+        }
+        boolean uses = data.startsWith("U:");
+        Identifier itemId = Identifier.tryParse(data.substring(2));
+        if (itemId == null) {
+            return null;
+        }
+        return net.minecraft.core.registries.BuiltInRegistries.ITEM.getOptional(itemId)
+                .map(item -> (WindowContent) new RecipeBrowserContent(runtime,
+                        new net.minecraft.world.item.ItemStack(item), uses))
+                .orElse(null);
+    }
+
 
     @SuppressWarnings({"rawtypes", "unchecked"})
     private void onScreenOpening(ScreenEvent.Opening event) {

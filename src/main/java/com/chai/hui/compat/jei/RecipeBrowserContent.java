@@ -74,6 +74,12 @@ public final class RecipeBrowserContent implements com.chai.hui.client.windowing
     }
 
     @Override
+    public String persistData() {
+        return (this.uses ? "U:" : "R:") + net.minecraft.core.registries.BuiltInRegistries.ITEM
+                .getKey(this.focusStack.getItem());
+    }
+
+    @Override
     public int preferredWidth() {
         return 320;
     }

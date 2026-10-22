@@ -226,7 +226,7 @@ public final class HuiDesktopScreen extends Screen {
     private void addCustomWindowNow(net.minecraft.network.chat.Component title, WindowContent content) {
         HuiWindow window = new HuiWindow(java.util.UUID.randomUUID().toString(), HuiWindowTypes.RECIPE_BROWSER,
                 title, content);
-        window.setEphemeral(true);
+        window.setEphemeral(content instanceof com.chai.hui.client.windowing.VirtualScreenWindowContent);
         int cascade = this.windows.size() % 6;
         window.setPosition(Math.max(0, (this.width - window.width()) / 2 - 60 + cascade * 18),
                 Math.max(TAB_HEIGHT + 8, (this.height - window.height()) / 2 - 40 + cascade * 18));
@@ -538,6 +538,20 @@ public final class HuiDesktopScreen extends Screen {
         if (typeId.equals(HuiWindowTypes.BLOCK_ENTITY)) {
             return restoreBlockEntityWindow(stored);
         }
+        if (typeId.equals(HuiWindowTypes.RECIPE_BROWSER) && net.neoforged.fml.ModList.get().isLoaded("jei")) {
+            WindowContent content = com.chai.hui.compat.jei.HuiJeiPlugin.createRecipeBrowserContent(stored.data);
+            if (content == null) {
+                return null;
+            }
+            HuiWindow window = new HuiWindow(stored.id, typeId,
+                    stored.title.isEmpty() ? Component.translatable("hui.window.recipe_browser")
+                            : Component.literal(stored.title),
+                    content);
+            window.setBounds(stored.x, stored.y, window.width(), window.height());
+            window.setMinimized(stored.minimized);
+            window.setPinned(stored.pinned);
+            return window;
+        }
         WindowType type = HuiWindowTypes.get(typeId);
         if (type == null) {
             HuiMod.LOGGER.warn("Skipping window of unknown type {}", typeId);
@@ -606,6 +620,7 @@ public final class HuiDesktopScreen extends Screen {
             stored.height = window.height();
             stored.minimized = window.minimized();
             stored.pinned = window.pinned();
+            stored.data = window.content().persistData();
             if (restorableBlockEntity) {
                 stored.pos = embedded.sourcePos().asLong();
                 stored.dimension = this.minecraft == null || this.minecraft.level == null ? ""
@@ -681,6 +696,11 @@ public final class HuiDesktopScreen extends Screen {
      * Opens an inventory style window from the desktop menus. When the current page already has an inventory window a
      * new desktop page is created first, so the existing inventory window stays on the previous page.
      */
+    private static boolean isRecipeBrowserType(String type) {
+        return HuiWindowTypes.RECIPE_BROWSER.toString().equals(type)
+                || HuiWindowTypes.JEI_RECIPES.toString().equals(type);
+    }
+
     private static boolean isMachineWindowType(String type) {
         return HuiWindowTypes.BLOCK_ENTITY.toString().equals(type)
                 || Identifier.fromNamespaceAndPath("hui", "block_ui").toString().equals(type);
@@ -1343,6 +1363,12 @@ public final class HuiDesktopScreen extends Screen {
 
     @Override
     public boolean keyPressed(KeyEvent event) {
+        // The inventory key always closes the desktop, even while a machine window handles keys.
+        if (this.minecraft != null
+                && this.minecraft.options.keyInventory.isActiveAndMatches(InputConstants.getKey(event))) {
+            onClose();
+            return true;
+        }
         if (net.neoforged.fml.ModList.get().isLoaded("jei")
                 && com.chai.hui.compat.jei.HuiJeiPlugin.tryHandleHuiKey(this, event, this.lastMouseX,
                         this.lastMouseY)) {
@@ -1506,7 +1532,8 @@ public final class HuiDesktopScreen extends Screen {
         // Pinned machine windows are remembered (block position), unpinned machine windows are cleared on exit.
         // Inventory windows and other regular windows stay on their page.
         for (DesktopLayout.PageLayout page : this.layout.pages) {
-            page.windows.removeIf(window -> isMachineWindowType(window.type) && !window.pinned);
+            page.windows.removeIf(window -> (isMachineWindowType(window.type) || isRecipeBrowserType(window.type))
+                    && !window.pinned);
         }
         this.layout.removeEmptyPages();
         DesktopLayoutStore.save(this.layout);

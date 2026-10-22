@@ -62,6 +62,11 @@ public interface WindowContent {
         return false;
     }
 
+    /** Extra data persisted with a pinned window so its content can be recreated. */
+    default String persistData() {
+        return "";
+    }
+
     default void tick() {}
 
     default void removed() {}

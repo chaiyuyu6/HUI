@@ -79,6 +79,9 @@ public final class DesktopLayout {
         /** Block entity windows: packed BlockPos and dimension id, empty/0 for other window types. */
         public long pos;
         public String dimension = "";
+        /** Extra content data for restorable content windows (e.g. the recipe browser focus). */
+        public String data = "";
+        /** Extra content data for restorable content windows (e.g. recipe browser focus). */
 
         public static WindowLayout of(Identifier type) {
             WindowLayout layout = new WindowLayout();
