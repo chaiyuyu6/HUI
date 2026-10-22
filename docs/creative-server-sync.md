@@ -46,3 +46,19 @@
 
 外观可以照搬原版（贴图/布局/页签位置从 `CreativeModeInventoryScreen` 代码移植），但数据层改为服务端菜单，
 这才是"完全照搬原版行为"而不复制其客户端菜单缺陷的做法。
+
+## 已确认的视觉要求
+
+**像素级照搬原版**：创造窗口外观必须与原版 `CreativeModeInventoryScreen` 一致，包括：
+
+- 面板背景贴图（`selectedTab.getBackgroundTexture()`，256x256 纹理按 195x136 区域绘制）；
+- 上下两排页签按钮（`tab_top/bottom_selected/unselected_1..7` 精灵，含分页逻辑与页签位置）；
+- 滚动条（`getScrollerSprite()`，175,18 起 12x15，含 hover 光标类型）；
+- 搜索框（原版 `EditBox` 外观：背景、光标、占位符、高亮）；
+- 玩家预览（`InventoryScreen.extractEntityInInventoryFollowsMouse`，INVENTORY 页签）；
+- 销毁物品槽（垃圾桶）与页签分页、翻页行为。
+
+实现方式：在 HUI 窗口内容里**复用/移植这些原版渲染代码**（骨架用服务端同步菜单的数据），
+输入事件转换成原版 `ContainerInput` 或页签/搜索 payload；不改变原版外观像素。
+
+数据层仍按本方案：`HuiCreativeMenu` 服务端权威 + 页签/搜索 payload。
