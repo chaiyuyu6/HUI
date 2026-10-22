@@ -38,6 +38,8 @@ import org.jetbrains.annotations.Nullable;
 public final class HuiJeiPlugin implements IModPlugin {
     private static final Identifier UID = Identifier.fromNamespaceAndPath(HuiMod.MOD_ID, "jei_plugin");
 
+    private static @Nullable IJeiRuntime runtime;
+
     private @Nullable HuiDesktopScreen transferDesktop;
     private @Nullable AbstractContainerScreen<?> transferProxy;
 
@@ -66,7 +68,26 @@ public final class HuiJeiPlugin implements IModPlugin {
 
     @Override
     public void onRuntimeAvailable(IJeiRuntime runtime) {
+        HuiJeiPlugin.runtime = runtime;
         NeoForge.EVENT_BUS.addListener(this::onScreenOpening);
+    }
+
+    /**
+     * Opens the HUI native recipe browser for the item at the given desktop coordinates (R key on a HUI slot).
+     *
+     * @return true when a browser window was opened.
+     */
+    public static boolean tryOpenRecipeBrowser(HuiDesktopScreen desktop, int mouseX, int mouseY, int key) {
+        if (runtime == null || key != com.mojang.blaze3d.platform.InputConstants.KEY_R) {
+            return false;
+        }
+        net.minecraft.world.item.ItemStack stack = desktop.itemAt(mouseX, mouseY);
+        if (stack == null) {
+            return false;
+        }
+        desktop.queueCustomWindow(Component.translatable("hui.window.recipe_browser"),
+                new RecipeBrowserContent(runtime, stack));
+        return true;
     }
 
     @SuppressWarnings({"rawtypes", "unchecked"})

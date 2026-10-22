@@ -71,6 +71,8 @@ public final class HuiDesktopScreen extends Screen {
     private final java.util.Map<net.minecraft.core.BlockPos, HuiWindow> transientBlockWindows = new java.util.HashMap<>();
     private final java.util.Map<net.minecraft.core.BlockPos, HuiWindow> blockUiWindows = new java.util.HashMap<>();
     private boolean preserveOnExternalScreen;
+    private int lastMouseX;
+    private int lastMouseY;
     private final java.util.List<net.minecraft.network.chat.Component> pendingCustomTitles = new java.util.ArrayList<>();
     private final java.util.List<WindowContent> pendingCustomContents = new java.util.ArrayList<>();
     private @Nullable net.minecraft.core.BlockPos pendingBlockUiPos;
@@ -213,23 +215,32 @@ public final class HuiDesktopScreen extends Screen {
 
     /** Queues a session window with arbitrary content (e.g. an embedded external screen); added on the next init. */
     public void queueCustomWindow(net.minecraft.network.chat.Component title, WindowContent content) {
+        if (this.built) {
+            addCustomWindowNow(title, content);
+            return;
+        }
         this.pendingCustomTitles.add(title);
         this.pendingCustomContents.add(content);
+    }
+
+    private void addCustomWindowNow(net.minecraft.network.chat.Component title, WindowContent content) {
+        HuiWindow window = new HuiWindow(java.util.UUID.randomUUID().toString(), HuiWindowTypes.RECIPE_BROWSER,
+                title, content);
+        window.setEphemeral(true);
+        int cascade = this.windows.size() % 6;
+        window.setPosition(Math.max(0, (this.width - window.width()) / 2 - 60 + cascade * 18),
+                Math.max(TAB_HEIGHT + 8, (this.height - window.height()) / 2 - 40 + cascade * 18));
+        clamp(window);
+        content.init(this.width, this.height);
+        this.windows.add(window);
+        bringToFront(window);
     }
 
     private void flushPendingCustomWindows() {
         while (!this.pendingCustomContents.isEmpty()) {
             net.minecraft.network.chat.Component title = this.pendingCustomTitles.remove(0);
             WindowContent content = this.pendingCustomContents.remove(0);
-            HuiWindow window = new HuiWindow(java.util.UUID.randomUUID().toString(), HuiWindowTypes.JEI_RECIPES, title,
-                    content);
-            window.setEphemeral(true);
-            int cascade = this.windows.size() % 6;
-            window.setPosition(Math.max(0, (this.width - window.width()) / 2 - 60 + cascade * 18),
-                    Math.max(TAB_HEIGHT + 8, (this.height - window.height()) / 2 - 40 + cascade * 18));
-            clamp(window);
-            this.windows.add(window);
-            bringToFront(window);
+            addCustomWindowNow(title, content);
         }
     }
 
@@ -865,6 +876,8 @@ public final class HuiDesktopScreen extends Screen {
     public void renderDesktopAboveExternalOverlays(GuiGraphicsExtractor graphics, int mouseX, int mouseY,
             float partialTick) {
         graphics.nextStratum();
+        this.lastMouseX = mouseX;
+        this.lastMouseY = mouseY;
         for (HuiWindow window : this.windows) {
             if (!window.minimized()) {
                 renderWindow(graphics, window, mouseX, mouseY, partialTick);
@@ -1262,6 +1275,11 @@ public final class HuiDesktopScreen extends Screen {
 
     @Override
     public boolean keyPressed(KeyEvent event) {
+        if (net.neoforged.fml.ModList.get().isLoaded("jei")
+                && com.chai.hui.compat.jei.HuiJeiPlugin.tryOpenRecipeBrowser(this, this.lastMouseX,
+                        this.lastMouseY, event.key())) {
+            return true;
+        }
         if (this.menu != null && event.key() == InputConstants.KEY_ESCAPE) {
             this.menu = null;
             return true;
