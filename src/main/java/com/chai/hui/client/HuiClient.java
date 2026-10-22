@@ -44,6 +44,7 @@ public final class HuiClient {
         // LOWEST so every other mod has registered its HUD layers before HUI enumerates them for auto-detection.
         modEventBus.addListener(EventPriority.LOWEST, this::registerGuiLayers);
         modEventBus.addListener(this::registerKeyMappings);
+        modEventBus.addListener(this::registerMenuScreens);
         NeoForge.EVENT_BUS.addListener(this::onClientTick);
         // In-place HUD layers (hunger) are translated by pushing/popping the pose around the layer render, so
         // decorations other mods draw after that layer (e.g. AppleSkin) move together with it.
@@ -70,6 +71,13 @@ public final class HuiClient {
         event.registerAboveAll(HUD_LAYER_ID, new HuiHudLayer());
         // Takes ownership of the vanilla HUD layers that can be re-arranged by the editor.
         HudLayoutManager.get().initialize(event);
+    }
+
+    private void registerMenuScreens(net.neoforged.neoforge.client.event.RegisterMenuScreensEvent event) {
+        net.minecraft.world.inventory.MenuType<com.chai.hui.menu.HuiCreativeMenu> type =
+                com.chai.hui.menu.HuiMenus.CREATIVE.get();
+        event.<com.chai.hui.menu.HuiCreativeMenu, com.chai.hui.client.screen.HuiCreativeScreen>register(type,
+                (menu, inventory, title) -> new com.chai.hui.client.screen.HuiCreativeScreen(menu, inventory, title));
     }
 
     private void registerKeyMappings(RegisterKeyMappingsEvent event) {
@@ -121,6 +129,19 @@ public final class HuiClient {
      * left alone.
      */
     private void onScreenOpening(ScreenEvent.Opening event) {
+        // Server side HUI creative menu: swap the vanilla stub screen for the HUI window content.
+        if (event.getNewScreen() instanceof com.chai.hui.client.screen.HuiCreativeScreen creative) {
+            com.chai.hui.client.windowing.CreativeOpeningContent.markOpened();
+            com.chai.hui.client.windowing.WindowContent content = new com.chai.hui.client.windowing.VanillaMenuUiContent(
+                    creative.getMenu(), creative.getTitle(), slot -> true, null);
+            if (event.getCurrentScreen() instanceof HuiDesktopScreen desktop) {
+                desktop.replaceCreativeContent(content);
+                event.setNewScreen(desktop);
+            } else {
+                event.setNewScreen(HuiDesktopScreen.openWithInventoryContent(content));
+            }
+            return;
+        }
         // A block entity container was requested (from the HUI "open" list or by restoring a pinned window): turn the
         // resulting container screen into a window instead of a full screen.
         if (event.getNewScreen() instanceof AbstractContainerScreen<?> container) {
@@ -143,6 +164,12 @@ public final class HuiClient {
             return;
         }
         if (event.getNewScreen() instanceof InventoryScreen) {
+            event.setNewScreen(HuiDesktopScreen.openWithInventory());
+            return;
+        }
+        if (event.getNewScreen() instanceof net.minecraft.client.gui.screens.inventory.CreativeModeInventoryScreen) {
+            // The vanilla creative picker is a client only menu (and getType() throws for it); the HUI desktop opens
+            // its server side creative menu instead.
             event.setNewScreen(HuiDesktopScreen.openWithInventory());
             return;
         }

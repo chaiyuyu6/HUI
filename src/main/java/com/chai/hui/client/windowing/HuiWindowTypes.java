@@ -61,9 +61,9 @@ public final class HuiWindowTypes {
             if (!player.hasInfiniteMaterials()) {
                 return notAvailableHere();
             }
-            // Reuse the vanilla creative inventory screen code (tabs, paging, search, scrollbar, destroy slot, player
-            // preview) so the HUI version looks and behaves exactly like vanilla while still living in a HUI window.
-            return EmbeddedScreenContent.creative(player);
+            // The creative inventory is now a server side menu (HuiCreativeMenu); the window shows a short placeholder
+            // until the server opens the menu, then the HUI screen handler swaps the real content in.
+            return new CreativeOpeningContent();
         }));
         register(WindowType.translatable(DEFAULT_INVENTORY, "hui.window.default_inventory", () -> {
             Player player = Minecraft.getInstance().player;

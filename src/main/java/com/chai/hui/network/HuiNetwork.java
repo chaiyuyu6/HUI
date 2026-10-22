@@ -3,6 +3,7 @@ package com.chai.hui.network;
 import java.util.OptionalInt;
 
 import com.chai.hui.HuiMod;
+import com.chai.hui.menu.HuiCreativeMenu;
 import com.chai.hui.server.HuiBlockUiServer;
 import com.chai.hui.server.HuiMenuManager;
 import net.minecraft.core.BlockPos;
@@ -44,6 +45,10 @@ public final class HuiNetwork {
                 HuiNetwork::handleBlockUiAction);
         registrar.playToServer(ClearCarriedPayload.TYPE, ClearCarriedPayload.STREAM_CODEC,
                 HuiNetwork::handleClearCarried);
+        registrar.playToServer(OpenCreativePayload.TYPE, OpenCreativePayload.STREAM_CODEC,
+                HuiNetwork::handleOpenCreative);
+        registrar.playToServer(CreativeTabPayload.TYPE, CreativeTabPayload.STREAM_CODEC,
+                HuiNetwork::handleCreativeTab);
         registrar.playToClient(BlockUiDataPayload.TYPE, BlockUiDataPayload.STREAM_CODEC,
                 com.chai.hui.client.network.HuiBlockUiClient::handleData);
         registrar.playToClient(CloseMenuClientPayload.TYPE, CloseMenuClientPayload.STREAM_CODEC,
@@ -202,6 +207,29 @@ public final class HuiNetwork {
             provider.onAction(player, blockEntity, payload.action(), payload.payload());
             PacketDistributor.sendToPlayer(player, new BlockUiDataPayload(pos, typeId,
                     provider.writeData(player, blockEntity)));
+        });
+    }
+
+    private static void handleOpenCreative(OpenCreativePayload payload, IPayloadContext context) {
+        context.enqueueWork(() -> {
+            if (!(context.player() instanceof ServerPlayer player) || !player.hasInfiniteMaterials()) {
+                return;
+            }
+            player.openMenu(new net.minecraft.world.SimpleMenuProvider(
+                    (containerId, inventory, p) -> new HuiCreativeMenu(containerId, inventory),
+                    Component.translatable("hui.window.creative_inventory")));
+        });
+    }
+
+    private static void handleCreativeTab(CreativeTabPayload payload, IPayloadContext context) {
+        context.enqueueWork(() -> {
+            if (!(context.player() instanceof ServerPlayer player)) {
+                return;
+            }
+            if (player.containerMenu instanceof HuiCreativeMenu menu) {
+                menu.setTabIndex(payload.tabIndex());
+                menu.setSearch(payload.search());
+            }
         });
     }
 

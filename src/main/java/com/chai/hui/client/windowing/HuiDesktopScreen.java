@@ -71,6 +71,7 @@ public final class HuiDesktopScreen extends Screen {
     private @Nullable net.minecraft.core.BlockPos pendingBlockUiPos;
     private @Nullable Component pendingBlockUiTitle;
     private @Nullable WindowContent pendingBlockUiContent;
+    private @Nullable WindowContent pendingInventoryContent;
     private final java.util.Map<net.minecraft.core.BlockPos, HuiWindow> pendingRestores = new java.util.HashMap<>();
     private @Nullable MenuWindowContent activeContent;
     private @Nullable WindowContent overlayContent;
@@ -96,6 +97,33 @@ public final class HuiDesktopScreen extends Screen {
         HuiDesktopScreen desktop = new HuiDesktopScreen(null);
         desktop.queueContainerWindow(screen, pos);
         return desktop;
+    }
+
+    /** Opens the desktop with the given inventory window content (server side creative menu). */
+    public static HuiDesktopScreen openWithInventoryContent(WindowContent content) {
+        HuiDesktopScreen desktop = new HuiDesktopScreen(HuiWindowTypes.CREATIVE);
+        desktop.pendingInventoryContent = content;
+        return desktop;
+    }
+
+    /** Swaps the inventory window content (e.g. creative placeholder -> server menu content). */
+    public void replaceCreativeContent(WindowContent content) {
+        Component title = Component.translatable("hui.window.creative_inventory");
+        for (HuiWindow window : this.windows) {
+            if (HuiWindowTypes.isInventoryType(window.typeId())) {
+                window.setContent(content);
+                window.setTitle(title);
+                content.init(this.width, this.height);
+                bringToFront(window);
+                return;
+            }
+        }
+        HuiWindow window = new HuiWindow(UUID.randomUUID().toString(), HuiWindowTypes.CREATIVE, title, content);
+        window.setPosition((this.width - window.width()) / 2, (this.height - window.height()) / 2);
+        clamp(window);
+        content.init(this.width, this.height);
+        this.windows.add(window);
+        bringToFront(window);
     }
 
     /** Opens the desktop restoring the pinned windows only (used by the F8 shortcut). */
