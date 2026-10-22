@@ -145,6 +145,11 @@ public final class HuiClient {
             return;
         }
         if (event.getNewScreen() instanceof InventoryScreen) {
+            if (Minecraft.getInstance().player != null && Minecraft.getInstance().player.hasInfiniteMaterials()) {
+                // Vanilla InventoryScreen.init() swaps itself to the creative screen; leave both untouched so the
+                // creative inventory stays vanilla and never opens the HUI desktop.
+                return;
+            }
             event.setNewScreen(HuiDesktopScreen.openWithInventory());
             return;
         }
