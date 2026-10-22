@@ -152,6 +152,9 @@ public final class HuiClient {
         }
 
         while (HuiKeyMappings.OPEN_DESKTOP.consumeClick()) {
+            if (!com.chai.hui.client.windowing.DesktopLayoutStore.isHuiInventoryEnabled()) {
+                continue;
+            }
             if (minecraft.gui.screen() == null && minecraft.player != null) {
                 HuiScreens.open(minecraft, HuiDesktopScreen.openWithoutInventory());
             }
@@ -174,6 +177,10 @@ public final class HuiClient {
      * left alone.
      */
     private void onScreenOpening(ScreenEvent.Opening event) {
+        // HUI mode was explicitly exited: never replace screens again until it is re-enabled in the settings.
+        if (!com.chai.hui.client.windowing.DesktopLayoutStore.isHuiInventoryEnabled()) {
+            return;
+        }
 
         // A block entity container was requested (from the HUI "open" list or by restoring a pinned window): turn the
         // resulting container screen into a window instead of a full screen.

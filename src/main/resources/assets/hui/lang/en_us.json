@@ -97,6 +97,8 @@
   "hui.menu.open_inventory": "Open inventory window",
   "hui.menu.open_default_inventory": "Open default inventory window",
   "hui.menu.toggle_inventory": "HUI inventory: %s",
+  "hui.menu.exit_hui_mode": "Exit HUI mode",
+  "hui.config.hui_desktop": "HUI desktop mode",
   "hui.menu.delete_page": "Delete this page",
   "hui.menu.minimize_window": "Minimize",
   "hui.menu.close_window": "Close window",

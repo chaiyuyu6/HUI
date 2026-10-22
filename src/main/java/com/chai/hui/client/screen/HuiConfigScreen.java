@@ -18,7 +18,7 @@ public final class HuiConfigScreen extends Screen {
     private static final int WIDGET_HEIGHT = 20;
     private static final int GAP = 6;
     private static final int PANEL_WIDTH = COLUMN_WIDTH * 2 + GAP * 2;
-    private static final int ROWS = 5;
+    private static final int ROWS = 6;
     private static final int ACCENT = 0xFF3FC7FF;
     private static final int PANEL_BACKGROUND = 0xD8101218;
     private static final int HINT_COLOR = 0xFF8B98A9;
@@ -56,6 +56,7 @@ public final class HuiConfigScreen extends Screen {
                 () -> HuiConfig.OFFSET_Y.set((HuiConfig.OFFSET_Y.get() + 4) % 24));
 
         // --- Right column: panel contents --------------------------------------------------
+        // --- Right column: panel contents --------------------------------------------------
         addToggle(rightX, y, "hui.config.show_fps", HuiConfig.SHOW_FPS.get(),
                 value -> HuiConfig.SHOW_FPS.set(value));
         addToggle(rightX, y + step, "hui.config.show_coords", HuiConfig.SHOW_COORDS.get(),
@@ -67,6 +68,13 @@ public final class HuiConfigScreen extends Screen {
         addToggle(rightX, y + step * 4, "hui.config.show_time", HuiConfig.SHOW_TIME.get(),
                 value -> HuiConfig.SHOW_TIME.set(value));
 
+        addToggle(rightX, y + step * 5, "hui.config.hui_desktop",
+                com.chai.hui.client.windowing.DesktopLayoutStore.isHuiInventoryEnabled(),
+                value -> {
+                    var layout = com.chai.hui.client.windowing.DesktopLayoutStore.load();
+                    layout.huiInventory = value;
+                    com.chai.hui.client.windowing.DesktopLayoutStore.save(layout);
+                });
         this.addRenderableWidget(Button.builder(Component.translatable("gui.done"), button -> this.onClose())
                 .bounds(this.width / 2 - 60, doneY(), 120, WIDGET_HEIGHT)
                 .build());

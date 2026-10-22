@@ -97,6 +97,8 @@
   "hui.menu.open_inventory": "打开物品栏窗口",
   "hui.menu.open_default_inventory": "打开默认物品栏窗口",
   "hui.menu.toggle_inventory": "HUI 物品栏：%s",
+  "hui.menu.exit_hui_mode": "退出 HUI 模式",
+  "hui.config.hui_desktop": "HUI 桌面模式",
   "hui.menu.delete_page": "删除该页面",
   "hui.menu.minimize_window": "最小化",
   "hui.menu.close_window": "关闭该窗口",

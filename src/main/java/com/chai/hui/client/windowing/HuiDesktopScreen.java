@@ -1412,9 +1412,7 @@ public final class HuiDesktopScreen extends Screen {
                 () -> openInventoryWindow(HuiWindowTypes.inventoryTypeForCurrentGameMode())));
         entries.add(ContextMenu.Entry.of("hui.menu.open_default_inventory",
                 () -> openInventoryWindow(HuiWindowTypes.DEFAULT_INVENTORY)));
-        entries.add(new ContextMenu.Entry(
-                Component.translatable("hui.menu.toggle_inventory", onOff(this.layout.huiInventory)),
-                this::toggleHuiInventory, true));
+        entries.add(ContextMenu.Entry.of("hui.menu.exit_hui_mode", this::exitHuiMode));
         entries.add(ContextMenu.Entry.of("hui.menu.hui_config", this::openHuiConfig));
         this.menu = new ContextMenu(this.font, (int) mouseX, (int) mouseY, this.width, this.height, entries);
     }
@@ -1499,6 +1497,13 @@ public final class HuiDesktopScreen extends Screen {
 
     private void openHuiConfig() {
         HuiScreens.open(this.minecraft, new HuiConfigScreen());
+    }
+
+    private void exitHuiMode() {
+        this.layout.huiInventory = false;
+        DesktopLayoutStore.save(this.layout);
+        HuiMod.LOGGER.info("[HUI] HUI mode disabled, no HUI desktop will be opened until re-enabled");
+        onClose();
     }
 
     private void toggleHuiInventory() {
