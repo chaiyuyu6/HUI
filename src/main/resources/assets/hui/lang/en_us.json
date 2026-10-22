@@ -73,6 +73,7 @@
   "hui.window.title_pinned": "%s (pinned)",
   "hui.window.demo": "Demo window",
   "hui.window.properties": "Window properties",
+  "hui.window.jei_recipes": "JEI Recipes",
   "hui.window.properties_lost": "Properties are not persisted for this restore path.",
   "hui.window.unavailable": "Player not available",
   "hui.demo.line1": "This is a virtual HUI window.",

@@ -71,6 +71,8 @@ public final class HuiDesktopScreen extends Screen {
     private final java.util.Map<net.minecraft.core.BlockPos, HuiWindow> transientBlockWindows = new java.util.HashMap<>();
     private final java.util.Map<net.minecraft.core.BlockPos, HuiWindow> blockUiWindows = new java.util.HashMap<>();
     private boolean preserveOnExternalScreen;
+    private final java.util.List<net.minecraft.network.chat.Component> pendingCustomTitles = new java.util.ArrayList<>();
+    private final java.util.List<WindowContent> pendingCustomContents = new java.util.ArrayList<>();
     private @Nullable net.minecraft.core.BlockPos pendingBlockUiPos;
     private @Nullable Component pendingBlockUiTitle;
     private @Nullable WindowContent pendingBlockUiContent;
@@ -200,6 +202,7 @@ public final class HuiDesktopScreen extends Screen {
             this.pendingBlockUiContent = null;
         }
         ensureMachineCompanions();
+        flushPendingCustomWindows();
         clampAllWindows();
         for (HuiWindow window : this.windows) {
             window.content().init(this.width, this.height);
@@ -207,6 +210,29 @@ public final class HuiDesktopScreen extends Screen {
     }
 
     /** Makes sure every machine window on the page is paired with the inventory companion. */
+
+    /** Queues a session window with arbitrary content (e.g. an embedded external screen); added on the next init. */
+    public void queueCustomWindow(net.minecraft.network.chat.Component title, WindowContent content) {
+        this.pendingCustomTitles.add(title);
+        this.pendingCustomContents.add(content);
+    }
+
+    private void flushPendingCustomWindows() {
+        while (!this.pendingCustomContents.isEmpty()) {
+            net.minecraft.network.chat.Component title = this.pendingCustomTitles.remove(0);
+            WindowContent content = this.pendingCustomContents.remove(0);
+            HuiWindow window = new HuiWindow(java.util.UUID.randomUUID().toString(), HuiWindowTypes.JEI_RECIPES, title,
+                    content);
+            window.setEphemeral(true);
+            int cascade = this.windows.size() % 6;
+            window.setPosition(Math.max(0, (this.width - window.width()) / 2 - 60 + cascade * 18),
+                    Math.max(TAB_HEIGHT + 8, (this.height - window.height()) / 2 - 40 + cascade * 18));
+            clamp(window);
+            this.windows.add(window);
+            bringToFront(window);
+        }
+    }
+
     private void ensureMachineCompanions() {
         for (HuiWindow window : new ArrayList<>(this.windows)) {
             boolean machine = window.typeId().equals(HuiWindowTypes.BLOCK_ENTITY)

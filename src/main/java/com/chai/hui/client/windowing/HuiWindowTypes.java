@@ -32,6 +32,8 @@ public final class HuiWindowTypes {
     public static final Identifier BLOCK_ENTITY = Identifier.fromNamespaceAndPath(HuiMod.MOD_ID, "block_entity");
     public static final Identifier DEMO = Identifier.fromNamespaceAndPath(HuiMod.MOD_ID, "demo");
     public static final Identifier PROPERTIES = Identifier.fromNamespaceAndPath(HuiMod.MOD_ID, "properties");
+    /** Session only window hosting an external screen (e.g. the JEI recipe screen). */
+    public static final Identifier JEI_RECIPES = Identifier.fromNamespaceAndPath(HuiMod.MOD_ID, "jei_recipes");
 
     /** All types that count as "the inventory window" of a page; only one of them may be open per page. */
     private static final Set<Identifier> INVENTORY_TYPES = Set.of(INVENTORY, CREATIVE, DEFAULT_INVENTORY);
@@ -91,6 +93,11 @@ public final class HuiWindowTypes {
     }
 
     private HuiWindowTypes() {}
+
+    static {
+        register(WindowType.translatable(JEI_RECIPES, "hui.window.jei_recipes",
+                () -> new TextWindowContent(List.of(Component.translatable("hui.window.jei_recipes")), 200, 24)));
+    }
 
     public static void register(WindowType type) {
         TYPES.put(type.id(), type);

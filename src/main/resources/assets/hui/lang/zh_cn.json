@@ -73,6 +73,7 @@
   "hui.window.title_pinned": "%s（已固定）",
   "hui.window.demo": "示例窗口",
   "hui.window.properties": "窗口属性",
+  "hui.window.jei_recipes": "JEI 配方",
   "hui.window.properties_lost": "该窗口恢复后不保留属性内容。",
   "hui.window.unavailable": "玩家不可用",
   "hui.demo.line1": "这是一个虚拟 HUI 窗口。",

@@ -56,6 +56,11 @@ public final class HuiJeiPlugin implements IModPlugin {
         registration.addGhostIngredientHandler(HuiDesktopScreen.class, new DesktopGhostHandler());
     }
 
+    /** Toggle for the experimental embedded recipe window; default on, set -Dhui.jei.embedded_recipes=false to disable. */
+    private static boolean embeddedRecipesEnabled() {
+        return !"false".equalsIgnoreCase(System.getProperty("hui.jei.embedded_recipes", "true"));
+    }
+
     @Override
     public void onRuntimeAvailable(IJeiRuntime runtime) {
         NeoForge.EVENT_BUS.addListener(this::onScreenOpening);
@@ -65,6 +70,14 @@ public final class HuiJeiPlugin implements IModPlugin {
     private void onScreenOpening(ScreenEvent.Opening event) {
         Screen next = event.getNewScreen();
         if (next instanceof mezz.jei.gui.recipes.RecipesGui recipesGui) {
+            if (embeddedRecipesEnabled() && event.getCurrentScreen() instanceof HuiDesktopScreen desktop) {
+                // Experimental: show the JEI recipe screen as a window inside the HUI desktop instead of full screen.
+                event.setNewScreen(desktop);
+                desktop.queueCustomWindow(Component.translatable("hui.window.jei_recipes"),
+                        new com.chai.hui.client.windowing.VirtualScreenWindowContent(recipesGui, 420, 320));
+                HuiMod.LOGGER.info("[HUI] JEI recipes embedded as a HUI window");
+                return;
+            }
             HuiMod.LOGGER.info("[HUI] JEI recipes gui opening, current={}", event.getCurrentScreen());
             if (event.getCurrentScreen() instanceof HuiDesktopScreen desktop) {
                 AbstractContainerMenu menu = desktop.activeServerMenu();
