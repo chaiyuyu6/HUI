@@ -321,11 +321,13 @@ public final class HuiDesktopScreen extends Screen {
     private boolean focusExistingBlockUi(net.minecraft.core.BlockPos pos) {
         HuiWindow transientWindow = this.transientBlockWindows.get(pos);
         if (transientWindow != null && this.windows.contains(transientWindow)) {
+            com.chai.hui.HuiMod.LOGGER.info("[HUI] duplicate block ui at {} focused", pos);
             bringToFront(transientWindow);
             return true;
         }
         for (HuiWindow window : this.windows) {
             if (window.content() instanceof MenuWindowContent content && pos.equals(content.sourcePos())) {
+                com.chai.hui.HuiMod.LOGGER.info("[HUI] duplicate block ui at {} focused", pos);
                 bringToFront(window);
                 return true;
             }

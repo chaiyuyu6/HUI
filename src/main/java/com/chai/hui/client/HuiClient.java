@@ -134,7 +134,12 @@ public final class HuiClient {
         // A block entity container was requested (from the HUI "open" list or by restoring a pinned window): turn the
         // resulting container screen into a window instead of a full screen.
         if (event.getNewScreen() instanceof AbstractContainerScreen<?> container) {
+            // Container list opens carry a requested position; direct block interaction remembers the right clicked
+            // position. Both keep it so the desktop can recognise an already open block entity window.
             net.minecraft.core.BlockPos pos = HuiRemoteContainers.pollOpened();
+            if (pos == null) {
+                pos = com.chai.hui.client.HuiPendingBlockPos.poll();
+            }
             if (pos != null) {
                 if (event.getCurrentScreen() instanceof HuiDesktopScreen desktop) {
                     desktop.queueContainerWindow(container, pos);
@@ -171,9 +176,7 @@ public final class HuiClient {
             if (!com.chai.hui.client.ui.HuiUiRegistry.isMenuCovered(container.getMenu().getType())) {
                 return;
             }
-            net.minecraft.core.BlockPos interacted = com.chai.hui.client.HuiPendingBlockPos.poll();
-            event.setNewScreen(interacted == null ? HuiDesktopScreen.openWithContainer(container, null)
-                    : HuiDesktopScreen.openWithTransientContainer(container, interacted));
+            event.setNewScreen(HuiDesktopScreen.openWithContainer(container, null));
         }
     }
 
