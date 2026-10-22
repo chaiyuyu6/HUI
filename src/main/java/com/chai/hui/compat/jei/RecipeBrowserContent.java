@@ -221,6 +221,8 @@ public final class RecipeBrowserContent implements com.chai.hui.client.windowing
             return false;
         }
         for (com.chai.hui.client.windowing.MenuWindowContent content : desktop.serverMenuContents()) {
+            com.chai.hui.HuiMod.LOGGER.info("[HUI] transfer candidate {} menu {}",
+                    content.getClass().getSimpleName(), content.menuContainerId());
             if (transferHandler(content.screenMenu(), tab.category()).isPresent()) {
                 return true;
             }
@@ -243,6 +245,8 @@ public final class RecipeBrowserContent implements com.chai.hui.client.windowing
         com.chai.hui.client.windowing.MenuWindowContent chosen = null;
         AbstractContainerMenu menu = null;
         for (com.chai.hui.client.windowing.MenuWindowContent content : desktop.serverMenuContents()) {
+            com.chai.hui.HuiMod.LOGGER.info("[HUI] transfer candidate {} menu {}",
+                    content.getClass().getSimpleName(), content.menuContainerId());
             AbstractContainerMenu candidate = content.screenMenu();
             if (transferHandler(candidate, tab.category()).isPresent()) {
                 chosen = content;
@@ -290,6 +294,8 @@ public final class RecipeBrowserContent implements com.chai.hui.client.windowing
         }
         if (minecraft.player.containerMenu.containerId == this.pendingMenuId) {
             for (com.chai.hui.client.windowing.MenuWindowContent content : desktop.serverMenuContents()) {
+            com.chai.hui.HuiMod.LOGGER.info("[HUI] transfer candidate {} menu {}",
+                    content.getClass().getSimpleName(), content.menuContainerId());
                 if (content.menuContainerId() == this.pendingMenuId) {
                     Tab tab = this.tabs.get(this.pendingTab);
                     executeTransfer(tab, tab.cards().get(this.pendingCard), content.screenMenu(),
