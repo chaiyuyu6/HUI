@@ -229,6 +229,7 @@ public final class HuiNetwork {
             if (player.containerMenu instanceof HuiCreativeMenu menu) {
                 menu.setTabIndex(payload.tabIndex());
                 menu.setSearch(payload.search());
+                menu.setScrollRow(payload.scrollRow());
             }
         });
     }

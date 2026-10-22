@@ -8,13 +8,14 @@ import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.resources.Identifier;
 
 /** Client asks the server to refill the creative display slots (tab change / search). */
-public record CreativeTabPayload(int tabIndex, String search) implements CustomPacketPayload {
+public record CreativeTabPayload(int tabIndex, String search, int scrollRow) implements CustomPacketPayload {
     public static final Type<CreativeTabPayload> TYPE =
             new Type<>(Identifier.fromNamespaceAndPath(HuiMod.MOD_ID, "creative_tab"));
 
     public static final StreamCodec<RegistryFriendlyByteBuf, CreativeTabPayload> STREAM_CODEC = StreamCodec.composite(
             ByteBufCodecs.VAR_INT, CreativeTabPayload::tabIndex,
             ByteBufCodecs.STRING_UTF8, CreativeTabPayload::search,
+            ByteBufCodecs.VAR_INT, CreativeTabPayload::scrollRow,
             CreativeTabPayload::new);
 
     @Override

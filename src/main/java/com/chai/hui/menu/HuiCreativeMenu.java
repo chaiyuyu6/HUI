@@ -31,6 +31,8 @@ public final class HuiCreativeMenu extends AbstractContainerMenu {
     private final SimpleContainer display = new SimpleContainer(DISPLAY_SLOTS);
     private int tabIndex;
     private String search = "";
+    private int scrollRow;
+    private int displayItemCount;
 
     public HuiCreativeMenu(int containerId, Inventory inventory) {
         super(HuiMenus.CREATIVE.get(), containerId);
@@ -43,12 +45,17 @@ public final class HuiCreativeMenu extends AbstractContainerMenu {
         for (int index = 0; index < 9; index++) {
             this.addSlot(new Slot(inventory, index, 8 + index * 18, 112));
         }
+        if (inventory.player instanceof net.minecraft.server.level.ServerPlayer serverPlayer) {
+            // The creative tab item lists are built by the server on demand; make sure they exist before reading them.
+            CreativeModeTabs.tryRebuildTabContents(serverPlayer.level().enabledFeatures(),
+                    serverPlayer.canUseGameMasterBlocks(), serverPlayer.level().registryAccess());
+        }
         fillTab();
     }
 
     /** Rebuilds the display slots for the current tab (and search filter). */
     public void fillTab() {
-        List<CreativeModeTab> tabs = CreativeModeTabs.allTabs();
+        List<CreativeModeTab> tabs = sortedTabs();
         if (tabs.isEmpty()) {
             return;
         }
@@ -74,10 +81,32 @@ public final class HuiCreativeMenu extends AbstractContainerMenu {
                 }
             }
         }
+        this.displayItemCount = items.size();
+        int offset = this.scrollRow * DISPLAY_COLUMNS;
         for (int index = 0; index < DISPLAY_SLOTS; index++) {
-            this.display.setItem(index, index < items.size() ? items.get(index) : ItemStack.EMPTY);
+            int itemIndex = offset + index;
+            this.display.setItem(index, itemIndex < items.size() ? items.get(itemIndex) : ItemStack.EMPTY);
         }
         this.broadcastChanges();
+    }
+
+    private static List<CreativeModeTab> sortedTabs() {
+        List<CreativeModeTab> tabs = new java.util.ArrayList<>();
+        for (CreativeModeTab tab : net.neoforged.neoforge.common.CreativeModeTabRegistry.getSortedCreativeModeTabs()) {
+            if (tab.hasAnyItems()) {
+                tabs.add(tab);
+            }
+        }
+        return tabs;
+    }
+
+    public int displayItemCount() {
+        return this.displayItemCount;
+    }
+
+    public void setScrollRow(int scrollRow) {
+        this.scrollRow = Math.max(0, scrollRow);
+        fillTab();
     }
 
     public int tabIndex() {

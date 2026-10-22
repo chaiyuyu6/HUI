@@ -132,8 +132,8 @@ public final class HuiClient {
         // Server side HUI creative menu: swap the vanilla stub screen for the HUI window content.
         if (event.getNewScreen() instanceof com.chai.hui.client.screen.HuiCreativeScreen creative) {
             com.chai.hui.client.windowing.CreativeOpeningContent.markOpened();
-            com.chai.hui.client.windowing.WindowContent content = new com.chai.hui.client.windowing.VanillaMenuUiContent(
-                    creative.getMenu(), creative.getTitle(), slot -> true, null);
+            com.chai.hui.client.windowing.WindowContent content = new com.chai.hui.client.windowing.CreativeWindowContent(
+                    creative.getMenu());
             if (event.getCurrentScreen() instanceof HuiDesktopScreen desktop) {
                 desktop.replaceCreativeContent(content);
                 event.setNewScreen(desktop);

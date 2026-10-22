@@ -19,6 +19,11 @@ public final class CreativeOpeningContent implements WindowContent {
     private static boolean requested;
 
     public static void markOpened() {
+        requested = true;
+    }
+
+    /** Called when the desktop closes so the next open requests the menu again. */
+    public static void reset() {
         requested = false;
     }
 
