@@ -32,10 +32,7 @@ public final class HuiJeiPlugin implements IModPlugin {
     @Override
     public void registerGuiHandlers(IGuiHandlerRegistration registration) {
         HuiMod.LOGGER.info("[HUI] JEI plugin registering the desktop screen handler");
-        registration.addGuiScreenHandler(HuiDesktopScreen.class, screen -> {
-            HuiMod.LOGGER.info("[HUI] JEI desktop gui properties requested");
-            return new DesktopGuiProperties(screen);
-        });
+        registration.addGuiScreenHandler(HuiDesktopScreen.class, DesktopGuiProperties::new);
     }
 
     /** The whole desktop is treated as the JEI gui area. */
@@ -57,7 +54,8 @@ public final class HuiJeiPlugin implements IModPlugin {
 
         @Override
         public int guiXSize() {
-            return this.screen.width;
+            // JEI draws the ingredient list to the right of the gui area: keep room for it inside the screen.
+            return Math.max(80, this.screen.width - 170);
         }
 
         @Override
