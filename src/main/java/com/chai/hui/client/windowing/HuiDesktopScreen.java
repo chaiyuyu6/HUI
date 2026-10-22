@@ -502,6 +502,10 @@ public final class HuiDesktopScreen extends Screen {
             return null;
         }
         net.minecraft.core.BlockPos pos = net.minecraft.core.BlockPos.of(stored.pos);
+        if (this.minecraft.player != null && !this.minecraft.player.isWithinBlockInteractionRange(pos, 1.0D)) {
+            // Out of arm's reach: the pinned machine window is not reopened.
+            return null;
+        }
         Component title = Component.translatable("hui.window.block_entity.opening");
         HuiWindow placeholder = new HuiWindow(stored.id, HuiWindowTypes.BLOCK_ENTITY, title,
                 new TextWindowContent(java.util.List.of(title), Math.max(80, stored.width - 8), 24));
@@ -608,6 +612,11 @@ public final class HuiDesktopScreen extends Screen {
      * Opens an inventory style window from the desktop menus. When the current page already has an inventory window a
      * new desktop page is created first, so the existing inventory window stays on the previous page.
      */
+    private static boolean isMachineWindowType(String type) {
+        return HuiWindowTypes.BLOCK_ENTITY.toString().equals(type)
+                || Identifier.fromNamespaceAndPath("hui", "block_ui").toString().equals(type);
+    }
+
     /** @return the index of the page that already has a window of the given inventory type, or -1. */
     private int findPageWithInventoryType(Identifier type) {
         String wanted = type.toString();
@@ -1231,8 +1240,11 @@ public final class HuiDesktopScreen extends Screen {
             releaseBlockEntityMenu(window);
         }
         captureActivePage();
-        // Every page keeps its windows between sessions: inventory windows are regular windows again and restorable
-        // machine windows come back when their block is still there.
+        // Pinned machine windows are remembered (block position), unpinned machine windows are cleared on exit.
+        // Inventory windows and other regular windows stay on their page.
+        for (DesktopLayout.PageLayout page : this.layout.pages) {
+            page.windows.removeIf(window -> isMachineWindowType(window.type) && !window.pinned);
+        }
         this.layout.removeEmptyPages();
         DesktopLayoutStore.save(this.layout);
         super.onClose();
