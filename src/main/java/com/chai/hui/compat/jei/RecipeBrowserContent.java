@@ -223,8 +223,9 @@ public final class RecipeBrowserContent implements com.chai.hui.client.windowing
     private int pendingCard = -1;
     private int pendingTicks;
     private int pendingMenuId = -1;
+    private boolean pendingMaxTransfer;
 
-    private void transfer(Tab tab, Card card) {
+    private void transfer(Tab tab, Card card, boolean maxTransfer) {
         var minecraft = Minecraft.getInstance();
         if (!(minecraft.gui.screen() instanceof com.chai.hui.client.windowing.HuiDesktopScreen desktop)
                 || minecraft.player == null) {
@@ -248,10 +249,11 @@ public final class RecipeBrowserContent implements com.chai.hui.client.windowing
         this.pendingTab = this.tabs.indexOf(tab);
         this.pendingCard = tab.cards().indexOf(card);
         this.pendingMenuId = menu.containerId;
+        this.pendingMaxTransfer = maxTransfer;
         this.pendingTicks = 40;
         if (minecraft.player.containerMenu == menu) {
             this.pendingTicks = 0;
-            executeTransfer(tab, card, menu);
+            executeTransfer(tab, card, menu, this.pendingMaxTransfer);
         } else {
             com.chai.hui.HuiMod.LOGGER.info("recipe transfer waiting for menu " + menu.containerId);
         }
@@ -281,7 +283,8 @@ public final class RecipeBrowserContent implements com.chai.hui.client.windowing
             for (com.chai.hui.client.windowing.MenuWindowContent content : desktop.serverMenuContents()) {
                 if (content.menuContainerId() == this.pendingMenuId) {
                     Tab tab = this.tabs.get(this.pendingTab);
-                    executeTransfer(tab, tab.cards().get(this.pendingCard), content.screenMenu());
+                    executeTransfer(tab, tab.cards().get(this.pendingCard), content.screenMenu(),
+                            this.pendingMaxTransfer);
                     this.pendingTicks = 0;
                     return;
                 }
@@ -291,15 +294,15 @@ public final class RecipeBrowserContent implements com.chai.hui.client.windowing
     }
 
     @SuppressWarnings({"rawtypes", "unchecked"})
-    private void executeTransfer(Tab tab, Card card, AbstractContainerMenu menu) {
+    private void executeTransfer(Tab tab, Card card, AbstractContainerMenu menu, boolean maxTransfer) {
         Optional<IRecipeTransferHandler<AbstractContainerMenu, Object>> handler = transferHandler(menu, tab.category());
         if (handler.isEmpty()) {
             com.chai.hui.HuiMod.LOGGER.info("no recipe transfer handler for this menu");
             return;
         }
         IRecipeSlotsView slots = card.drawable().getRecipeSlotsView();
-        Object error = handler.get().transferRecipe(menu, card.recipe(), slots, Minecraft.getInstance().player, false,
-                true);
+        Object error = handler.get().transferRecipe(menu, card.recipe(), slots, Minecraft.getInstance().player,
+                maxTransfer, true);
         com.chai.hui.HuiMod.LOGGER.info("recipe transfer result: " + error);
     }
     private void toggleBookmark() {
@@ -338,7 +341,7 @@ public final class RecipeBrowserContent implements com.chai.hui.client.windowing
             if (action.kind() == ACTION_BOOKMARK) {
                 toggleBookmark();
             } else {
-                transfer(tab, card);
+                transfer(tab, card, (event.modifiers() & 1) != 0);
             }
             return true;
         }
