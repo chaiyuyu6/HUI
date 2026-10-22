@@ -34,7 +34,6 @@ public final class HuiMod {
     public HuiMod(IEventBus modEventBus, ModContainer modContainer) {
         // HUI only changes the client, so its settings live in a CLIENT config (config/hui-client.toml).
         modContainer.registerConfig(ModConfig.Type.CLIENT, HuiConfig.SPEC);
-        com.chai.hui.menu.HuiMenus.MENUS.register(modEventBus);
         modEventBus.addListener(HuiNetwork::register);
         // Tracked container menus: periodically close the ones that became invalid (block removed / out of range) and
         // clean up on logout so no menu outlives its player.

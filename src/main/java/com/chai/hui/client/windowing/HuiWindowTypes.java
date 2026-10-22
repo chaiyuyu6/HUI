@@ -61,9 +61,8 @@ public final class HuiWindowTypes {
             if (!player.hasInfiniteMaterials()) {
                 return notAvailableHere();
             }
-            // The creative inventory is now a server side menu (HuiCreativeMenu); the window shows a short placeholder
-            // until the server opens the menu, then the HUI screen handler swaps the real content in.
-            return new CreativeOpeningContent();
+            // Creative mode keeps the vanilla creative screen (rendered by vanilla code inside a HUI window).
+            return EmbeddedScreenContent.creative(player);
         }));
         register(WindowType.translatable(DEFAULT_INVENTORY, "hui.window.default_inventory", () -> {
             Player player = Minecraft.getInstance().player;
