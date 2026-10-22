@@ -171,7 +171,9 @@ public final class EmbeddedScreenContent implements MenuWindowContent {
         // on the real server menu so id 0 sync packets can never be applied to the client only picker menu.
         Minecraft minecraft = Minecraft.getInstance();
         if (minecraft.player != null && minecraft.player.containerMenu != minecraft.player.inventoryMenu
-                && minecraft.player.containerMenu.getType() == null) {
+                && minecraft.player.containerMenu.containerId == 0) {
+            // Only client only menus share container id 0 with inventoryMenu; AbstractContainerMenu#getType throws for
+            // menus without a registered type (the creative picker), so compare the ids instead.
             minecraft.player.containerMenu = minecraft.player.inventoryMenu;
         }
         return content;
