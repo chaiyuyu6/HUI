@@ -256,6 +256,12 @@ public final class HuiDesktopScreen extends Screen {
             }
             return;
         }
+        HuiWindow existingInventory = findInventoryWindow();
+        if (existingInventory != null && existingInventory.pinned()) {
+            // The pinned inventory window stays on this desktop page; the machine gets its own page (and its own
+            // default inventory companion).
+            addPage();
+        }
         HuiWindow window = new HuiWindow(UUID.randomUUID().toString(), HuiWindowTypes.BLOCK_ENTITY, screen.getTitle(),
                 content);
         window.setEphemeral(true);

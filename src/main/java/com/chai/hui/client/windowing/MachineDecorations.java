@@ -587,9 +587,11 @@ public final class MachineDecorations {
         if (minecraft.player == null) {
             return;
         }
-        int[] crafting = slotPosition.get(0);
-        int left = crafting[0] + 18;
-        int top = crafting[1] + 2;
+        // Armor slot (index 5) marks the top left of the vanilla inventory screen; the preview sits to its right.
+        int reference = Math.min(5, menu.slots.size() - 1);
+        int[] anchor = slotPosition.get(reference);
+        int left = anchor[0] + 18;
+        int top = anchor[1];
         InventoryScreen.extractEntityInInventoryFollowsMouse(graphics, left, top, left + 49, top + 70, 30, 0.0625F,
                 mouseX, mouseY, minecraft.player);
     }
