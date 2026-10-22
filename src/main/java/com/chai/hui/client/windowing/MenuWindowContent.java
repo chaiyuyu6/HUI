@@ -21,6 +21,11 @@ public interface MenuWindowContent extends WindowContent {
     /** Makes this window's menu the current server side menu so click packets are routed to it. */
     void activate();
 
+    /** @return the screen area [x, y, w, h] of a slot index, or null when unknown. */
+    default int @Nullable [] slotScreenArea(int slotIndex, int originX, int originY) {
+        return null;
+    }
+
     /** @return the slot index of this menu under the mouse, or -1. */
     default int slotIndexAt(int mouseX, int mouseY, int originX, int originY) {
         return -1;

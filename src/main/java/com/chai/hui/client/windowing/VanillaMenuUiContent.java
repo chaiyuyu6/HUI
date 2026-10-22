@@ -198,6 +198,24 @@ public final class VanillaMenuUiContent implements MenuWindowContent {
         return slot == null ? -1 : slot.index;
     }
 
+    @Override
+    public int @Nullable [] slotScreenArea(int slotIndex, int originX, int originY) {
+        if (slotIndex < 0 || slotIndex >= this.menu.slots.size()) {
+            return null;
+        }
+        Slot slot = this.menu.getSlot(slotIndex);
+        if (!this.visibleSlots.contains(slot) || !slot.isActive()) {
+            return null;
+        }
+        int x = originX + PADDING + (this.layoutOverride != null ? this.layoutOverride.apply(slot)[0] : slot.x - this.minX);
+        int y = originY + PADDING + (this.layoutOverride != null ? this.layoutOverride.apply(slot)[1] : slot.y - this.minY);
+        if (this.layoutOverride != null) {
+            x = originX + this.layoutOverride.apply(slot)[0];
+            y = originY + this.layoutOverride.apply(slot)[1];
+        }
+        return new int[] {x - 1, y - 1, SLOT_SIZE, SLOT_SIZE};
+    }
+
     // --- Rendering -------------------------------------------------------------------------
 
     @Override

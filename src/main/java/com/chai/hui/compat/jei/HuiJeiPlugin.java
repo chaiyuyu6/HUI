@@ -53,6 +53,7 @@ public final class HuiJeiPlugin implements IModPlugin {
     @Override
     public void registerGuiHandlers(IGuiHandlerRegistration registration) {
         registration.addGuiScreenHandler(HuiDesktopScreen.class, new DesktopScreenHandler());
+        registration.addGhostIngredientHandler(HuiDesktopScreen.class, new DesktopGhostHandler());
     }
 
     @Override
@@ -126,6 +127,49 @@ public final class HuiJeiPlugin implements IModPlugin {
      * JEI screen handler for the desktop: gui properties for the overlay layout plus clickable ingredients for the
      * slots of the HUI windows, so hovering a HUI slot shows the JEI recipe/usage hints (R / U).
      */
+    /**
+     * JEI ghost drag: the slots of the active HUI window become drop targets. In creative mode the dropped item is
+     * inserted through the server validated CreativeInsertPayload; survival drops are ignored (the ghost item is not real).
+     */
+    private static final class DesktopGhostHandler
+            implements mezz.jei.api.gui.handlers.IGhostIngredientHandler<HuiDesktopScreen> {
+        @Override
+        public <I> java.util.List<mezz.jei.api.gui.handlers.IGhostIngredientHandler.Target<I>> getTargetsTyped(
+                HuiDesktopScreen screen, mezz.jei.api.ingredients.ITypedIngredient<I> typedIngredient, boolean doStart) {
+            Object ingredient = typedIngredient.getIngredient();
+            if (!(ingredient instanceof net.minecraft.world.item.ItemStack)) {
+                return java.util.List.of();
+            }
+            java.util.List<mezz.jei.api.gui.handlers.IGhostIngredientHandler.Target<I>> targets = new java.util.ArrayList<>();
+            for (int[] area : screen.activeSlotAreas()) {
+                targets.add(new mezz.jei.api.gui.handlers.IGhostIngredientHandler.Target<I>() {
+                    @Override
+                    public net.minecraft.client.renderer.Rect2i getArea() {
+                        return new net.minecraft.client.renderer.Rect2i(area[1], area[2], area[3], area[4]);
+                    }
+
+                    @Override
+                    @SuppressWarnings("unchecked")
+                    public void accept(I value) {
+                        if (value instanceof net.minecraft.world.item.ItemStack stack) {
+                            screen.ghostInsert(area[0], stack);
+                        }
+                    }
+                });
+            }
+            return targets;
+        }
+
+        @Override
+        public void onComplete() {
+        }
+
+        @Override
+        public boolean shouldHighlightTargets() {
+            return true;
+        }
+    }
+
     private static final class DesktopScreenHandler implements mezz.jei.api.gui.handlers.IScreenHandler<HuiDesktopScreen> {
         @Override
         public IGuiProperties apply(HuiDesktopScreen screen) {

@@ -1139,6 +1139,41 @@ public final class HuiDesktopScreen extends Screen {
         HuiMod.LOGGER.info("[HUI] desktop restored after external screen, windows={}", this.windows.size());
     }
 
+    /** @return [slotIndex, x, y, w, h] areas of the active window (JEI ghost drag targets). */
+    public java.util.List<int[]> activeSlotAreas() {
+        java.util.List<int[]> areas = new java.util.ArrayList<>();
+        if (this.activeContent == null) {
+            return areas;
+        }
+        for (HuiWindow window : this.windows) {
+            if (window.minimized() || window.content() != this.activeContent) {
+                continue;
+            }
+            int count = this.activeContent.screenMenu().slots.size();
+            for (int index = 0; index < count; index++) {
+                int[] area = this.activeContent.slotScreenArea(index, window.contentX(), window.contentY());
+                if (area != null) {
+                    areas.add(new int[] {index, area[0], area[1], area[2], area[3]});
+                }
+            }
+            break;
+        }
+        return areas;
+    }
+
+    /**
+     * JEI ghost drag drop: in creative mode insert a copy of the dragged item into the slot of the active window
+     * (server validated through CreativeInsertPayload); survival is ignored because the item is not real.
+     */
+    public void ghostInsert(int slotIndex, net.minecraft.world.item.ItemStack stack) {
+        if (this.activeContent == null || !this.activeContent.serverBacked() || this.minecraft == null
+                || this.minecraft.player == null || !this.minecraft.player.hasInfiniteMaterials()) {
+            return;
+        }
+        ClientPacketDistributor.sendToServer(new com.chai.hui.network.CreativeInsertPayload(
+                this.activeContent.menuContainerId(), slotIndex, stack.copy()));
+    }
+
     /** Activates the active window's menu on the server, so clicks/JEI transfers are routed to it. */
     public void activateActiveContent() {
         if (this.activeContent != null && this.activeContent.serverBacked()) {
