@@ -292,7 +292,7 @@ public final class HuiDesktopScreen extends Screen {
             restored.setContent(content);
             restored.setTitle(screen.getTitle());
             clamp(restored);
-            pairMachineWithInventory(restored);
+            pairCompanionForRestoredWindow(restored);
             // Do not steal focus from a window the player just opened (restored containers arrive a bit later).
             if (this.focused == null) {
                 bringToFront(restored);
@@ -359,6 +359,34 @@ public final class HuiDesktopScreen extends Screen {
             }
         }
         return false;
+    }
+
+    /**
+     * Companion for a window restored from the layout: the saved machine position must stay untouched, so only the
+     * inventory companion is created/placed next to it.
+     */
+    private void pairCompanionForRestoredWindow(HuiWindow machine) {
+        Identifier desired = HuiWindowTypes.DEFAULT_INVENTORY;
+        HuiWindow companion = findInventoryWindow();
+        if (companion != null && !companion.typeId().equals(desired)) {
+            closeWindow(companion);
+            companion = null;
+        }
+        if (companion != null) {
+            return;
+        }
+        companion = addWindow(desired);
+        if (companion == null) {
+            return;
+        }
+        int gap = 8;
+        int x = machine.x() + machine.width() + gap;
+        if (x + companion.width() > this.width - 4) {
+            x = Math.max(4, machine.x() - companion.width() - gap);
+        }
+        int y = Math.max(TAB_TOP + TAB_HEIGHT + 4, machine.y());
+        companion.setPosition(x, y);
+        clamp(companion);
     }
 
     private void pairMachineWithInventory(HuiWindow machine) {
