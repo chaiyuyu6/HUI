@@ -18,6 +18,8 @@ import net.minecraft.world.inventory.AnvilMenu;
 import net.minecraft.world.inventory.CartographyTableMenu;
 import net.minecraft.world.inventory.CraftingMenu;
 import net.minecraft.world.inventory.EnchantmentMenu;
+import net.minecraft.world.inventory.GrindstoneMenu;
+import net.minecraft.world.inventory.LoomMenu;
 import net.minecraft.world.inventory.SmithingMenu;
 import net.minecraft.world.inventory.StonecutterMenu;
 import net.minecraft.world.item.ItemStack;
@@ -117,6 +119,12 @@ public final class MachineDecorations {
         }
         if (menu instanceof CraftingMenu) {
             return MachineDecorations::renderCrafting;
+        }
+        if (menu instanceof GrindstoneMenu) {
+            return MachineDecorations::renderGrindstone;
+        }
+        if (menu instanceof LoomMenu) {
+            return MachineDecorations::renderLoom;
         }
         if (menu instanceof AnvilMenu) {
             return MachineDecorations::renderAnvil;
@@ -354,6 +362,30 @@ public final class MachineDecorations {
         int width = result[0] - 4 - startX;
         if (width > 6) {
             drawArrow(graphics, startX, middle[1] + 8, width, ACCENT);
+        }
+    }
+
+    private static void renderGrindstone(GuiGraphicsExtractor graphics, AbstractContainerMenu menu,
+            SlotPosition slotPosition, int mouseX, int mouseY, float partialTick) {
+        int[] input = slotPosition.get(GrindstoneMenu.INPUT_SLOT);
+        int[] additional = slotPosition.get(GrindstoneMenu.ADDITIONAL_SLOT);
+        int[] result = slotPosition.get(GrindstoneMenu.RESULT_SLOT);
+        int startX = Math.max(input[0], additional[0]) + 20;
+        int width = result[0] - 4 - startX;
+        if (width > 6) {
+            drawArrow(graphics, startX, result[1] + 8, width, ACCENT);
+        }
+    }
+
+    private static void renderLoom(GuiGraphicsExtractor graphics, AbstractContainerMenu menu,
+            SlotPosition slotPosition, int mouseX, int mouseY, float partialTick) {
+        // Loom slots: 0 banner, 1 dye, 2 pattern, 3 result.
+        int[] pattern = slotPosition.get(2);
+        int[] result = slotPosition.get(3);
+        int startX = pattern[0] + 20;
+        int width = result[0] - 4 - startX;
+        if (width > 6) {
+            drawArrow(graphics, startX, result[1] + 8, width, ACCENT);
         }
     }
 
