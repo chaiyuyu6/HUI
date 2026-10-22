@@ -1084,6 +1084,12 @@ public final class HuiDesktopScreen extends Screen {
     }
 
     @Override
+    public boolean isPauseScreen() {
+        // Keep the world running while the HUI desktop is open (like a vanilla container screen).
+        return false;
+    }
+
+    @Override
     public void removed() {
 
         if (this.removedOnce) {

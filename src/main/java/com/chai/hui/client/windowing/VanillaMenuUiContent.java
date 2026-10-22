@@ -210,6 +210,16 @@ public final class VanillaMenuUiContent implements MenuWindowContent {
         GuiTextures.drawWindowFrame(graphics, originX, originY, this.width, this.height);
 
         this.hovered = getHoveredSlot(mouseX, mouseY);
+        // Decorations are underlays: the flame/progress fills sit behind the slot items.
+        if (this.decoration != null) {
+            graphics.enableScissor(this.originX, this.originY, this.originX + this.width,
+                    this.originY + this.height);
+            this.decoration.render(graphics, this.menu,
+                    slotIndex -> new int[] {slotX(this.menu.getSlot(slotIndex)),
+                            slotY(this.menu.getSlot(slotIndex))},
+                    mouseX, mouseY, partialTick);
+            graphics.disableScissor();
+        }
         ItemStack carried = this.menu.getCarried();
 
         for (Slot slot : this.visibleSlots) {
@@ -256,10 +266,7 @@ public final class VanillaMenuUiContent implements MenuWindowContent {
                 }
             }
         }
-        if (this.decoration != null) {
-            this.decoration.render(graphics, this.menu, this.originX + PADDING, this.originY + PADDING, this.minX,
-                    this.minY, mouseX, mouseY, partialTick);
-        }
+
     }
 
     @Override
