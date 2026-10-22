@@ -61,7 +61,9 @@ public final class HuiWindowTypes {
             if (!player.hasInfiniteMaterials()) {
                 return notAvailableHere();
             }
-            return com.chai.hui.HuiConfig.nativeUi() ? new HuiCreativeUiContent() : EmbeddedScreenContent.creative(player);
+            // Reuse the vanilla creative inventory screen code (tabs, paging, search, scrollbar, destroy slot, player
+            // preview) so the HUI version looks and behaves exactly like vanilla while still living in a HUI window.
+            return EmbeddedScreenContent.creative(player);
         }));
         register(WindowType.translatable(DEFAULT_INVENTORY, "hui.window.default_inventory", () -> {
             Player player = Minecraft.getInstance().player;

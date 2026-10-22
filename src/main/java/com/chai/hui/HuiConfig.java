@@ -70,7 +70,7 @@ public final class HuiConfig {
     /** Render container/inventory windows with HUI's own UI instead of embedding the vanilla screen. */
     public static final ModConfigSpec.BooleanValue WINDOWING_NATIVE_UI = BUILDER
             .comment("Use HUI's own UI for container and inventory windows (false = embed the vanilla screen)")
-            .define("windowing.nativeUi", false);
+            .define("windowing.nativeUi", true);
 
     public static final ModConfigSpec SPEC = BUILDER.build();
 

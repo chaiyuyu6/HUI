@@ -175,3 +175,11 @@ HuiBlockUiServer.register(MyBlockEntities.MACHINE.get(), new HuiBlockUiServer.Pr
 
 布局 bug 修复：`UiStyle` 增加 `directionSet/justifySet/alignSet`，只有显式调用时 `Ui.copy` 才覆盖基础方向，
 `Ui.row()`/`Ui.column()` 不再被默认值覆盖。
+
+## 10. 后续方向：HUI 窗口 + 复用原版渲染代码
+
+- 默认保持 HUI 窗口化（`windowing.nativeUi=true`），容器/物品栏窗口由 HUI 提供窗口外观；
+- 创造物品栏已改为**直接复用原版 `CreativeModeInventoryScreen` 的代码**渲染与交互（页签、翻页、搜索、滚动条、
+  销毁槽、玩家预览），因此 HUI 窗口里的创造物品栏与原生 100% 一致，同时仍在 HUI 桌面/窗口体系内；
+- 容器窗口下一步准备同样处理：把原版 `AbstractContainerScreen` 的背景/槽位/标签渲染代码复用到 HUI 窗口中，
+  只在窗口层做裁剪与配对，避免手写 UI 与原版产生差异。
