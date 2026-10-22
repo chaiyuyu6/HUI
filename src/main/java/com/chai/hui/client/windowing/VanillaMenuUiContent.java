@@ -210,18 +210,9 @@ public final class VanillaMenuUiContent implements MenuWindowContent {
         GuiTextures.drawWindowFrame(graphics, originX, originY, this.width, this.height);
 
         this.hovered = getHoveredSlot(mouseX, mouseY);
-        // Decorations are underlays: the flame/progress fills sit behind the slot items.
-        if (this.decoration != null) {
-            graphics.enableScissor(this.originX, this.originY, this.originX + this.width,
-                    this.originY + this.height);
-            this.decoration.render(graphics, this.menu,
-                    slotIndex -> new int[] {slotX(this.menu.getSlot(slotIndex)),
-                            slotY(this.menu.getSlot(slotIndex))},
-                    mouseX, mouseY, partialTick);
-            graphics.disableScissor();
-        }
         ItemStack carried = this.menu.getCarried();
 
+        // Pass 1: slot frames and highlights.
         for (Slot slot : this.visibleSlots) {
             if (!slot.isActive()) {
                 continue;
@@ -236,7 +227,27 @@ public final class VanillaMenuUiContent implements MenuWindowContent {
             if (slot.isHighlightable() && isHovered) {
                 graphics.fill(x - 1, y - 1, x + SLOT_SIZE - 1, y + SLOT_SIZE - 1, SLOT_HIGHLIGHT);
             }
+        }
 
+        // Pass 2: machine decorations between the slot frames and the items, so the flame glow is visible but item
+        // icons stay on top of it.
+        if (this.decoration != null) {
+            graphics.enableScissor(this.originX, this.originY, this.originX + this.width,
+                    this.originY + this.height);
+            this.decoration.render(graphics, this.menu,
+                    slotIndex -> new int[] {slotX(this.menu.getSlot(slotIndex)),
+                            slotY(this.menu.getSlot(slotIndex))},
+                    mouseX, mouseY, partialTick);
+            graphics.disableScissor();
+        }
+
+        // Pass 3: item stacks (including the quick craft preview).
+        for (Slot slot : this.visibleSlots) {
+            if (!slot.isActive()) {
+                continue;
+            }
+            int x = slotX(slot);
+            int y = slotY(slot);
             ItemStack stack = slot.getItem();
             String itemCount = null;
             if (this.isQuickCrafting && this.quickCraftSlots.contains(slot) && !carried.isEmpty()) {

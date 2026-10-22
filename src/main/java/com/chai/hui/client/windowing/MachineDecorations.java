@@ -98,7 +98,8 @@ public final class MachineDecorations {
             barRight = Math.max(barLeft + 8, result[0] - 1);
         }
         int barWidth = barRight - barLeft;
-        int barY = input[1] + 7;
+        // Align the bar with the result slot so it visually points at the output.
+        int barY = result[1] + 7;
         graphics.fill(barLeft, barY, barRight, barY + 3, 0x33000000);
         int fill = Math.round(barWidth * burn);
         if (fill > 0) {
