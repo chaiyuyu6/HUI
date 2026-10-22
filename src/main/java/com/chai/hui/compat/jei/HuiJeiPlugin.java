@@ -94,6 +94,17 @@ public final class HuiJeiPlugin implements IModPlugin {
     private void onScreenOpening(ScreenEvent.Opening event) {
         Screen next = event.getNewScreen();
         if (next instanceof mezz.jei.gui.recipes.RecipesGui recipesGui) {
+            if (event.getCurrentScreen() instanceof HuiDesktopScreen desktop && runtime != null) {
+                // R on a HUI slot: JEI asks to open its recipes screen, open the HUI native browser instead.
+                net.minecraft.world.item.ItemStack hovered = desktop.hoveredItem();
+                if (hovered != null) {
+                    event.setNewScreen(desktop);
+                    desktop.queueCustomWindow(Component.translatable("hui.window.recipe_browser"),
+                            new RecipeBrowserContent(runtime, hovered));
+                    HuiMod.LOGGER.info("[HUI] R on HUI slot, opened the HUI recipe browser");
+                    return;
+                }
+            }
             if (embeddedRecipesEnabled() && event.getCurrentScreen() instanceof HuiDesktopScreen desktop) {
                 // Experimental: show the JEI recipe screen as a window inside the HUI desktop instead of full screen.
                 event.setNewScreen(desktop);

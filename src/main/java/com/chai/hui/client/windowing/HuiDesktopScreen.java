@@ -1225,7 +1225,19 @@ public final class HuiDesktopScreen extends Screen {
         if (this.activeContent != null && this.activeContent.serverBacked()) {
             return this.activeContent.screenMenu();
         }
+        for (HuiWindow window : this.windows) {
+            if (!window.minimized() && window.content() instanceof MenuWindowContent content
+                    && content.serverBacked()) {
+                this.activeContent = content;
+                return content.screenMenu();
+            }
+        }
         return null;
+    }
+
+    /** @return the item under the last known mouse position (used when JEI opens its recipes GUI). */
+    public @Nullable net.minecraft.world.item.ItemStack hoveredItem() {
+        return itemAt(this.lastMouseX, this.lastMouseY);
     }
 
     /** @return the item stack under the mouse inside a window slot (JEI clickable ingredient source). */
