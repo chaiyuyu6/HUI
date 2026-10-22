@@ -7,6 +7,7 @@ import com.chai.hui.HuiMod;
 import com.chai.hui.client.windowing.HuiDesktopScreen;
 import mezz.jei.api.IModPlugin;
 import mezz.jei.api.JeiPlugin;
+import mezz.jei.api.constants.VanillaTypes;
 import mezz.jei.api.gui.handlers.IGuiProperties;
 import mezz.jei.api.registration.IGuiHandlerRegistration;
 import mezz.jei.api.runtime.IJeiRuntime;
@@ -77,17 +78,36 @@ public final class HuiJeiPlugin implements IModPlugin {
      *
      * @return true when a browser window was opened.
      */
-    public static boolean tryOpenRecipeBrowser(HuiDesktopScreen desktop, int mouseX, int mouseY, int key) {
-        if (runtime == null || key != com.mojang.blaze3d.platform.InputConstants.KEY_R) {
+    public static boolean tryHandleHuiKey(HuiDesktopScreen desktop, net.minecraft.client.input.KeyEvent event,
+            int mouseX, int mouseY) {
+        if (runtime == null) {
             return false;
         }
         net.minecraft.world.item.ItemStack stack = desktop.itemAt(mouseX, mouseY);
         if (stack == null) {
             return false;
         }
-        desktop.queueCustomWindow(Component.translatable("hui.window.recipe_browser"),
-                new RecipeBrowserContent(runtime, stack));
-        return true;
+        var typed = runtime.getIngredientManager().createTypedIngredient(VanillaTypes.ITEM_STACK, stack);
+        if (typed.isEmpty()) {
+            return false;
+        }
+        com.mojang.blaze3d.platform.InputConstants.Key key = com.mojang.blaze3d.platform.InputConstants.getKey(event);
+        var mappings = runtime.getKeyMappings();
+        var bookmarks = runtime.getBookmarkManager();
+        if (!mappings.getBookmark().isUnbound() && mappings.getBookmark().isActiveAndMatches(key)) {
+            if (bookmarks.contains(typed.get())) {
+                bookmarks.remove(typed.get());
+            } else {
+                bookmarks.add(typed.get());
+            }
+            return true;
+        }
+        if (mappings.getShowRecipe().isActiveAndMatches(key) || mappings.getShowUses().isActiveAndMatches(key)) {
+            desktop.queueCustomWindow(Component.translatable("hui.window.recipe_browser"),
+                    new RecipeBrowserContent(runtime, stack));
+            return true;
+        }
+        return false;
     }
 
     @SuppressWarnings({"rawtypes", "unchecked"})

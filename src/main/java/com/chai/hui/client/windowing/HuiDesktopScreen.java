@@ -232,7 +232,10 @@ public final class HuiDesktopScreen extends Screen {
                 Math.max(TAB_HEIGHT + 8, (this.height - window.height()) / 2 - 40 + cascade * 18));
         clamp(window);
         content.init(this.width, this.height);
-        this.windows.add(window);
+        HuiWindow previousFocused = this.focused;
+        if (previousFocused == null || !(previousFocused.content() instanceof MenuWindowContent)) {
+            bringToFront(window);
+        }
         bringToFront(window);
     }
 
@@ -1288,8 +1291,8 @@ public final class HuiDesktopScreen extends Screen {
     @Override
     public boolean keyPressed(KeyEvent event) {
         if (net.neoforged.fml.ModList.get().isLoaded("jei")
-                && com.chai.hui.compat.jei.HuiJeiPlugin.tryOpenRecipeBrowser(this, this.lastMouseX,
-                        this.lastMouseY, event.key())) {
+                && com.chai.hui.compat.jei.HuiJeiPlugin.tryHandleHuiKey(this, event, this.lastMouseX,
+                        this.lastMouseY)) {
             return true;
         }
         if (this.menu != null && event.key() == InputConstants.KEY_ESCAPE) {
