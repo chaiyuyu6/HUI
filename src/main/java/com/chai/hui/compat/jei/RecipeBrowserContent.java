@@ -186,10 +186,9 @@ public final class RecipeBrowserContent implements com.chai.hui.client.windowing
             int drawX = listX + 2;
             int drawY = y + 2;
             card.drawable().setPosition(drawX, drawY);
-            int localX = mouseX - originX;
-            int localY = mouseY - originY;
-            card.drawable().drawRecipe(graphics, localX, localY);
-            card.drawable().drawOverlays(graphics, localX, localY);
+            // drawables are positioned in absolute screen coordinates, so the hover mouse position is absolute too
+            card.drawable().drawRecipe(graphics, mouseX, mouseY);
+            card.drawable().drawOverlays(graphics, mouseX, mouseY);
             if (this.typedFocus != null) {
                 int bookmarkX = listX + listW - 38;
                 int transferX = listX + listW - 18;
@@ -241,7 +240,9 @@ public final class RecipeBrowserContent implements com.chai.hui.client.windowing
             return;
         }
         IRecipeSlotsView slots = card.drawable().getRecipeSlotsView();
-        handler.get().transferRecipe(menu, card.recipe(), slots, Minecraft.getInstance().player, false, true);
+        Object error = handler.get().transferRecipe(menu, card.recipe(), slots, Minecraft.getInstance().player, false,
+                true);
+        com.chai.hui.HuiMod.LOGGER.info("[HUI] recipe transfer result: {}", error);
     }
 
     private void toggleBookmark() {
@@ -276,6 +277,7 @@ public final class RecipeBrowserContent implements com.chai.hui.client.windowing
                 continue;
             }
             Card card = tab.cards().get(action.card());
+            com.chai.hui.HuiMod.LOGGER.info("[HUI] recipe browser action {} on card {}", action.kind(), action.card());
             if (action.kind() == ACTION_BOOKMARK) {
                 toggleBookmark();
             } else {
