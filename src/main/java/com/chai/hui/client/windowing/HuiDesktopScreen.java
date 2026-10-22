@@ -893,7 +893,16 @@ public final class HuiDesktopScreen extends Screen {
             this.menu.render(graphics, this.font, mouseX, mouseY);
         }
         // The carried stack and tooltip must be above every window and the context menu.
-        WindowContent overlay = this.overlayContent;
+        // Prefer the window under the mouse so hover tooltips work without focusing it first.
+        HuiWindow hoveredWindow = null;
+        for (int index = this.windows.size() - 1; index >= 0; index--) {
+            HuiWindow candidate = this.windows.get(index);
+            if (!candidate.minimized() && candidate.contains(mouseX, mouseY)) {
+                hoveredWindow = candidate;
+                break;
+            }
+        }
+        WindowContent overlay = hoveredWindow == null ? this.overlayContent : hoveredWindow.content();
         if (overlay == null && this.focused != null) {
             overlay = this.focused.content();
         }
@@ -906,6 +915,9 @@ public final class HuiDesktopScreen extends Screen {
                 }
             }
         }
+        // Windows are drawn in Render.Post after vanilla flushed deferred tooltips, so flush again for our
+        // hovered item tooltips.
+        graphics.extractDeferredElements(mouseX, mouseY, partialTick);
     }
 
     private void renderWindow(GuiGraphicsExtractor graphics, HuiWindow window, int mouseX, int mouseY,
