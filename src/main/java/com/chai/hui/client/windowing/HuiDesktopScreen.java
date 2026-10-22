@@ -67,6 +67,8 @@ public final class HuiDesktopScreen extends Screen {
     private @Nullable ContextMenu menu;
     private @Nullable AbstractContainerScreen<?> pendingContainerScreen;
     private @Nullable net.minecraft.core.BlockPos pendingContainerPos;
+    private boolean pendingContainerPersist = true;
+    private final java.util.Map<net.minecraft.core.BlockPos, HuiWindow> transientBlockWindows = new java.util.HashMap<>();
     private final java.util.Map<net.minecraft.core.BlockPos, HuiWindow> blockUiWindows = new java.util.HashMap<>();
     private @Nullable net.minecraft.core.BlockPos pendingBlockUiPos;
     private @Nullable Component pendingBlockUiTitle;
@@ -98,6 +100,14 @@ public final class HuiDesktopScreen extends Screen {
         return desktop;
     }
 
+    /** Same as {@link #openWithContainer} but the window is session only (not written to the layout file). */
+    public static HuiDesktopScreen openWithTransientContainer(AbstractContainerScreen<?> screen,
+            @Nullable net.minecraft.core.BlockPos pos) {
+        HuiDesktopScreen desktop = new HuiDesktopScreen(null);
+        desktop.queueContainerWindow(screen, pos, false);
+        return desktop;
+    }
+
 
     /** Opens the desktop restoring the pinned windows only (used by the F8 shortcut). */
     public static HuiDesktopScreen openWithoutInventory() {
@@ -106,8 +116,14 @@ public final class HuiDesktopScreen extends Screen {
 
     /** Queues a container screen (chest, furnace, ...) to be added as a window on the next init. */
     public void queueContainerWindow(AbstractContainerScreen<?> screen, @Nullable net.minecraft.core.BlockPos pos) {
+        queueContainerWindow(screen, pos, true);
+    }
+
+    public void queueContainerWindow(AbstractContainerScreen<?> screen, @Nullable net.minecraft.core.BlockPos pos,
+            boolean persist) {
         this.pendingContainerScreen = screen;
         this.pendingContainerPos = pos;
+        this.pendingContainerPersist = persist;
     }
 
     /** Opens the desktop hosting a HUI block UI window (registered block entity without a vanilla GUI). */
@@ -162,7 +178,9 @@ public final class HuiDesktopScreen extends Screen {
             }
         }
         if (this.pendingContainerScreen != null) {
-            adoptContainerWindow(this.pendingContainerScreen, this.pendingContainerPos);
+            boolean persist = this.pendingContainerPersist;
+            this.pendingContainerPersist = true;
+            adoptContainerWindow(this.pendingContainerScreen, this.pendingContainerPos, persist);
             this.pendingContainerScreen = null;
             this.pendingContainerPos = null;
         }
@@ -197,6 +215,13 @@ public final class HuiDesktopScreen extends Screen {
      */
     private void adoptContainerWindow(AbstractContainerScreen<?> screen,
             @Nullable net.minecraft.core.BlockPos sourcePos) {
+        adoptContainerWindow(screen, sourcePos, true);
+    }
+
+    private void adoptContainerWindow(AbstractContainerScreen<?> screen,
+            @Nullable net.minecraft.core.BlockPos sourcePos, boolean persist) {
+        // The window content only stores the source position when the window should be restorable across sessions.
+        net.minecraft.core.BlockPos contentPos = persist ? sourcePos : null;
         if (sourcePos != null && this.minecraft != null && this.minecraft.level != null) {
             net.minecraft.world.level.block.entity.BlockEntity blockEntity = this.minecraft.level
                     .getBlockEntity(sourcePos);
@@ -211,6 +236,16 @@ public final class HuiDesktopScreen extends Screen {
                 return;
             }
         }
+        if (sourcePos != null && !this.pendingRestores.containsKey(sourcePos) && focusExistingBlockUi(sourcePos)) {
+            // This block entity UI is already open somewhere on the desktop: close the freshly opened menu and just
+            // bring the existing window to the front instead of opening a duplicate.
+            ClientPacketDistributor.sendToServer(new CloseMenuPayload(screen.getMenu().containerId));
+            if (this.minecraft != null && this.minecraft.player != null) {
+                this.minecraft.player.containerMenu = this.minecraft.player.inventoryMenu;
+            }
+            return;
+        }
+
         WindowContent content;
         com.chai.hui.client.ui.HuiUiRegistry.MenuUiFactory menuFactory =
                 com.chai.hui.client.ui.HuiUiRegistry.menuUi(screen.getMenu().getType());
@@ -225,22 +260,22 @@ public final class HuiDesktopScreen extends Screen {
             net.minecraft.world.inventory.AbstractContainerMenu menu = screen.getMenu();
             if (menu instanceof net.minecraft.world.inventory.StonecutterMenu) {
                 content = new VanillaMenuUiContent(menu, screen.getTitle(),
-                        slot -> !(slot.container instanceof net.minecraft.world.entity.player.Inventory), sourcePos,
+                        slot -> !(slot.container instanceof net.minecraft.world.entity.player.Inventory), contentPos,
                         MachineDecorations::stonecutterSlotPosition, 186, 78)
                         .withDecoration(MachineDecorations.forMenu(menu));
             } else if (menu instanceof net.minecraft.world.inventory.CartographyTableMenu) {
                 content = new VanillaMenuUiContent(menu, screen.getTitle(),
-                        slot -> !(slot.container instanceof net.minecraft.world.entity.player.Inventory), sourcePos,
+                        slot -> !(slot.container instanceof net.minecraft.world.entity.player.Inventory), contentPos,
                         MachineDecorations::cartographySlotPosition, 186, 82)
                         .withDecoration(MachineDecorations.forMenu(menu));
             } else if (menu instanceof net.minecraft.world.inventory.EnchantmentMenu) {
                 content = new VanillaMenuUiContent(menu, screen.getTitle(),
-                        slot -> !(slot.container instanceof net.minecraft.world.entity.player.Inventory), sourcePos,
+                        slot -> !(slot.container instanceof net.minecraft.world.entity.player.Inventory), contentPos,
                         MachineDecorations::enchantingSlotPosition, 186, 82)
                         .withDecoration(MachineDecorations.forMenu(menu));
             } else {
                 content = new VanillaMenuUiContent(menu, screen.getTitle(),
-                        slot -> !(slot.container instanceof net.minecraft.world.entity.player.Inventory), sourcePos)
+                        slot -> !(slot.container instanceof net.minecraft.world.entity.player.Inventory), contentPos)
                         .withDecoration(MachineDecorations.forMenu(menu));
             }
         }
@@ -268,6 +303,9 @@ public final class HuiDesktopScreen extends Screen {
         window.setEphemeral(true);
 
         this.windows.add(window);
+        if (!persist && sourcePos != null) {
+            trackTransientBlockWindow(sourcePos, window);
+        }
         pairMachineWithInventory(window);
         bringToFront(window);
     }
@@ -277,6 +315,42 @@ public final class HuiDesktopScreen extends Screen {
      * between the machine and the player without the machine window showing the player inventory itself. In creative
      * mode the creative inventory window takes that place (the default inventory window is survival only).
      */
+    /**
+     * @return true when a window for this block position is already open (current page or another page); focuses it.
+     */
+    private boolean focusExistingBlockUi(net.minecraft.core.BlockPos pos) {
+        HuiWindow transientWindow = this.transientBlockWindows.get(pos);
+        if (transientWindow != null && this.windows.contains(transientWindow)) {
+            bringToFront(transientWindow);
+            return true;
+        }
+        for (HuiWindow window : this.windows) {
+            if (window.content() instanceof MenuWindowContent content && pos.equals(content.sourcePos())) {
+                bringToFront(window);
+                return true;
+            }
+        }
+        long wanted = pos.asLong();
+        for (int pageIndex = 0; pageIndex < this.layout.pages.size(); pageIndex++) {
+            if (pageIndex == this.layout.activePage) {
+                continue;
+            }
+            for (DesktopLayout.WindowLayout stored : this.layout.pages.get(pageIndex).windows) {
+                if (stored.pos == wanted) {
+                    switchPage(pageIndex);
+                    for (HuiWindow window : this.windows) {
+                        if (window.content() instanceof MenuWindowContent content && pos.equals(content.sourcePos())) {
+                            bringToFront(window);
+                            return true;
+                        }
+                    }
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
     private void pairMachineWithInventory(HuiWindow machine) {
         // Machine windows always pair with the cropped default inventory window, in survival and creative alike.
         Identifier desiredInventory = HuiWindowTypes.DEFAULT_INVENTORY;
@@ -317,6 +391,12 @@ public final class HuiDesktopScreen extends Screen {
         }
         clamp(companion);
         clamp(machine);
+    }
+
+    private void trackTransientBlockWindow(net.minecraft.core.BlockPos pos, HuiWindow window) {
+        if (pos != null) {
+            this.transientBlockWindows.put(pos, window);
+        }
     }
 
     private void ensureInventoryCompanion() {
@@ -575,6 +655,7 @@ public final class HuiDesktopScreen extends Screen {
         releaseBlockEntityMenu(window);
         window.content().removed();
         this.windows.remove(window);
+        this.transientBlockWindows.values().remove(window);
         if (this.overlayContent == window.content()) {
             this.overlayContent = null;
         }

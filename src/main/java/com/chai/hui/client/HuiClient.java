@@ -58,6 +58,14 @@ public final class HuiClient {
         NeoForge.EVENT_BUS.addListener(this::onScreenOpening);
         NeoForge.EVENT_BUS.addListener(this::onLoggingOut);
         com.chai.hui.client.network.HuiBlockUiClient.registerHooks();
+        NeoForge.EVENT_BUS.addListener((net.neoforged.neoforge.event.entity.player.PlayerInteractEvent.RightClickBlock event) -> {
+            if (!event.getLevel().isClientSide()) {
+                return;
+            }
+            if (event.getLevel().getBlockState(event.getPos()).getMenuProvider(event.getLevel(), event.getPos()) != null) {
+                com.chai.hui.client.HuiPendingBlockPos.set(event.getPos());
+            }
+        });
 
         // Lets the "Config" button in the Mods menu open the HUI settings screen.
         modContainer.registerExtensionPoint(IConfigScreenFactory.class,
@@ -163,7 +171,9 @@ public final class HuiClient {
             if (!com.chai.hui.client.ui.HuiUiRegistry.isMenuCovered(container.getMenu().getType())) {
                 return;
             }
-            event.setNewScreen(HuiDesktopScreen.openWithContainer(container, null));
+            net.minecraft.core.BlockPos interacted = com.chai.hui.client.HuiPendingBlockPos.poll();
+            event.setNewScreen(interacted == null ? HuiDesktopScreen.openWithContainer(container, null)
+                    : HuiDesktopScreen.openWithTransientContainer(container, interacted));
         }
     }
 
