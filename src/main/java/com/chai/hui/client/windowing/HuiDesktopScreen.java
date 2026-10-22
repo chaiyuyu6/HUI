@@ -77,6 +77,15 @@ public final class HuiDesktopScreen extends Screen {
     private @Nullable MenuWindowContent activeContent;
     private @Nullable WindowContent overlayContent;
 
+    /** JEI draws its ingredient list in a strip at the right edge; HUI keeps windows out of it. */
+    private static final boolean JEI_PRESENT =
+            net.neoforged.fml.ModList.get().isLoaded("jei");
+    private static final int JEI_RESERVED_WIDTH = 176;
+
+    private int reservedRightWidth() {
+        return JEI_PRESENT ? JEI_RESERVED_WIDTH : 0;
+    }
+
     private HuiDesktopScreen(@Nullable Identifier requestedInventoryType) {
         super(Component.translatable("hui.desktop.title"));
         this.requestedInventoryType = requestedInventoryType;
@@ -809,7 +818,9 @@ public final class HuiDesktopScreen extends Screen {
     }
 
     private void clamp(HuiWindow window) {
-        int x = Math.max(-window.width() + 60, Math.min(this.width - 60, window.x()));
+        int reserved = reservedRightWidth();
+        int maxX = Math.max(4, this.width - reserved - window.width());
+        int x = Math.max(0, Math.min(maxX, window.x()));
         int y = Math.max(TAB_TOP + TAB_HEIGHT, Math.min(this.height - 40, window.y()));
         window.setPosition(x, y);
     }
