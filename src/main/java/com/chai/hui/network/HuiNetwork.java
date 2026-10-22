@@ -42,6 +42,8 @@ public final class HuiNetwork {
                 HuiNetwork::handleOpenBlockUi);
         registrar.playToServer(BlockUiActionPayload.TYPE, BlockUiActionPayload.STREAM_CODEC,
                 HuiNetwork::handleBlockUiAction);
+        registrar.playToServer(ClearCarriedPayload.TYPE, ClearCarriedPayload.STREAM_CODEC,
+                HuiNetwork::handleClearCarried);
         registrar.playToClient(BlockUiDataPayload.TYPE, BlockUiDataPayload.STREAM_CODEC,
                 com.chai.hui.client.network.HuiBlockUiClient::handleData);
         registrar.playToClient(CloseMenuClientPayload.TYPE, CloseMenuClientPayload.STREAM_CODEC,
@@ -200,6 +202,21 @@ public final class HuiNetwork {
             provider.onAction(player, blockEntity, payload.action(), payload.payload());
             PacketDistributor.sendToPlayer(player, new BlockUiDataPayload(pos, typeId,
                     provider.writeData(player, blockEntity)));
+        });
+    }
+
+    private static void handleClearCarried(ClearCarriedPayload payload, IPayloadContext context) {
+        context.enqueueWork(() -> {
+            if (!(context.player() instanceof ServerPlayer player)) {
+                return;
+            }
+            if (payload.containerId() != player.containerMenu.containerId) {
+                return;
+            }
+            if (!player.containerMenu.getCarried().isEmpty()) {
+                player.containerMenu.setCarried(net.minecraft.world.item.ItemStack.EMPTY);
+                player.containerMenu.broadcastFullState();
+            }
         });
     }
 

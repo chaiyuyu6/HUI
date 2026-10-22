@@ -851,6 +851,26 @@ public final class HuiDesktopScreen extends Screen {
         return true;
     }
 
+    /**
+     * A server backed carried stack (e.g. picked up from a stone cutter) must be handed over to a client only window
+     * (creative inventory) before the click is forwarded: the server menu drops its copy and the client window receives
+     * it as its own carried stack, otherwise the stack would exist twice (slot + still following the cursor).
+     */
+    private void handOverServerCarriedToClientOnlyWindow() {
+        net.minecraft.client.Minecraft minecraft = this.minecraft;
+        if (minecraft == null || minecraft.player == null) {
+            return;
+        }
+        net.minecraft.world.inventory.AbstractContainerMenu menu = minecraft.player.containerMenu;
+        if (menu == minecraft.player.inventoryMenu || menu.getCarried().isEmpty()) {
+            return;
+        }
+        net.minecraft.world.item.ItemStack carried = menu.getCarried().copy();
+        ClientPacketDistributor.sendToServer(new com.chai.hui.network.ClearCarriedPayload(menu.containerId));
+        menu.setCarried(net.minecraft.world.item.ItemStack.EMPTY);
+        minecraft.player.inventoryMenu.setCarried(carried);
+    }
+
     private @Nullable HuiWindow windowAt(double mouseX, double mouseY) {
         for (int index = this.windows.size() - 1; index >= 0; index--) {
             HuiWindow window = this.windows.get(index);
