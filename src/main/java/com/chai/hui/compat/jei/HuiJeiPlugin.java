@@ -56,9 +56,12 @@ public final class HuiJeiPlugin implements IModPlugin {
         registration.addGhostIngredientHandler(HuiDesktopScreen.class, new DesktopGhostHandler());
     }
 
-    /** Toggle for the experimental embedded recipe window; default on, set -Dhui.jei.embedded_recipes=false to disable. */
+    /**
+     * Toggle for the experimental embedded recipe window. Off by default (the embedded screen did not render well);
+     * enable with -Dhui.jei.embedded_recipes=true while the prototype is being iterated on.
+     */
     private static boolean embeddedRecipesEnabled() {
-        return !"false".equalsIgnoreCase(System.getProperty("hui.jei.embedded_recipes", "true"));
+        return "true".equalsIgnoreCase(System.getProperty("hui.jei.embedded_recipes", "false"));
     }
 
     @Override
