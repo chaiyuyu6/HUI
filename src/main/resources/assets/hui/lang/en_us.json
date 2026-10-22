@@ -76,6 +76,8 @@
   "hui.window.jei_recipes": "JEI Recipes",
   "hui.window.recipe_browser": "Recipes",
   "hui.recipe_browser.focused": "Recipes for %s",
+  "hui.window.recipe_browser_uses": "Uses",
+  "hui.recipe_browser.uses": "Uses of %s",
   "hui.recipe_browser.empty": "No recipes",
   "hui.window.properties_lost": "Properties are not persisted for this restore path.",
   "hui.window.unavailable": "Player not available",

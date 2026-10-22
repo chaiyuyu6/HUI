@@ -76,6 +76,8 @@
   "hui.window.jei_recipes": "JEI 配方",
   "hui.window.recipe_browser": "配方",
   "hui.recipe_browser.focused": "%s 的配方",
+  "hui.window.recipe_browser_uses": "用途",
+  "hui.recipe_browser.uses": "%s 的用途",
   "hui.recipe_browser.empty": "没有配方",
   "hui.window.properties_lost": "该窗口恢复后不保留属性内容。",
   "hui.window.unavailable": "玩家不可用",

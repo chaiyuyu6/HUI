@@ -48,6 +48,9 @@ public final class RecipeBrowserContent implements com.chai.hui.client.windowing
     private final IJeiRuntime runtime;
     private final IRecipeManager recipeManager;
     private final ItemStack focusStack;
+    /** true = U mode (uses: recipes consuming the item), false = R mode (recipes producing it). */
+    private final boolean uses;
+    private final Component header;
     private final List<Tab> tabs = new ArrayList<>();
     private ITypedIngredient<ItemStack> typedFocus;
     private boolean built;
@@ -58,9 +61,16 @@ public final class RecipeBrowserContent implements com.chai.hui.client.windowing
     private final List<int[]> tabButtons = new ArrayList<>();
 
     public RecipeBrowserContent(IJeiRuntime runtime, ItemStack focusStack) {
+        this(runtime, focusStack, false);
+    }
+
+    public RecipeBrowserContent(IJeiRuntime runtime, ItemStack focusStack, boolean uses) {
         this.runtime = runtime;
         this.recipeManager = runtime.getRecipeManager();
         this.focusStack = focusStack.copy();
+        this.uses = uses;
+        this.header = Component.translatable(uses ? "hui.recipe_browser.uses" : "hui.recipe_browser.focused",
+                this.focusStack.getHoverName());
     }
 
     @Override
@@ -90,9 +100,9 @@ public final class RecipeBrowserContent implements com.chai.hui.client.windowing
         if (this.typedFocus == null) {
             return;
         }
-        List<IFocus<?>> focuses = List.of(
-                focusFactory.createFocus(RecipeIngredientRole.OUTPUT, this.typedFocus),
-                focusFactory.createFocus(RecipeIngredientRole.INPUT, this.typedFocus));
+        List<IFocus<?>> focuses = this.uses
+                ? List.of(focusFactory.createFocus(RecipeIngredientRole.INPUT, this.typedFocus))
+                : List.of(focusFactory.createFocus(RecipeIngredientRole.OUTPUT, this.typedFocus));
         IFocusGroup focusGroup = focusFactory.createFocusGroup(focuses);
         try (Stream<IRecipeCategory<?>> categories = this.recipeManager.createRecipeCategoryLookup()
                 .limitFocus(focuses).get()) {
@@ -132,8 +142,7 @@ public final class RecipeBrowserContent implements com.chai.hui.client.windowing
         graphics.enableScissor(originX, originY, originX + preferredWidth(), originY + preferredHeight());
         graphics.fill(originX + 1, originY + 1, originX + SIDEBAR_WIDTH, originY + preferredHeight() - 1,
                 0xB0101418);
-        graphics.text(font, Component.translatable("hui.recipe_browser.focused", this.focusStack.getHoverName()),
-                originX + SIDEBAR_WIDTH + PADDING, originY + PADDING, 0xFFE0E0E0, false);
+        graphics.text(font, this.header, originX + SIDEBAR_WIDTH + PADDING, originY + PADDING, 0xFFE0E0E0, false);
         if (this.tabs.isEmpty()) {
             graphics.text(font, Component.translatable("hui.recipe_browser.empty"),
                     originX + SIDEBAR_WIDTH + PADDING, originY + 24, 0xFF909090, false);

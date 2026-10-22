@@ -102,7 +102,12 @@ public final class HuiJeiPlugin implements IModPlugin {
             }
             return true;
         }
-        if (mappings.getShowRecipe().isActiveAndMatches(key) || mappings.getShowUses().isActiveAndMatches(key)) {
+        if (mappings.getShowUses().isActiveAndMatches(key)) {
+            desktop.queueCustomWindow(Component.translatable("hui.window.recipe_browser_uses"),
+                    new RecipeBrowserContent(runtime, stack, true));
+            return true;
+        }
+        if (mappings.getShowRecipe().isActiveAndMatches(key)) {
             desktop.queueCustomWindow(Component.translatable("hui.window.recipe_browser"),
                     new RecipeBrowserContent(runtime, stack));
             return true;
