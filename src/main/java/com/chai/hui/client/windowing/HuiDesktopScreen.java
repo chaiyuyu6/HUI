@@ -1117,6 +1117,12 @@ public final class HuiDesktopScreen extends Screen {
         this.preserveOnExternalScreen = true;
     }
 
+    /** Captures the current page before an external screen (JEI) replaces the desktop. */
+    public void prepareExternalScreen() {
+        this.preserveOnExternalScreen = true;
+        captureActivePage();
+    }
+
     /**
      * Restores the desktop windows (from the saved page layout) when the desktop is shown again after an external
      * screen such as JEI replaced it.
