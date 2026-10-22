@@ -27,6 +27,8 @@ sourceSets.main.resources {
 }
 
 repositories {
+    // JEI (compile only integration, the jar is loaded from run/mods at runtime)
+    maven { url = 'https://maven.blamejared.com' }
     // 国内网络适配：NeoForged 官方仓库在部分网络下不可达，统一重定向到其 CDN 镜像。
     // 如果你在海外或能直连 maven.neoforged.net，可以删除这一整个 configureEach 块。
     configureEach { repo ->
@@ -128,6 +130,9 @@ configurations {
 }
 
 dependencies {
+    // Optional JEI integration: compile against the JEI API only, JEI is loaded from run/mods at runtime.
+    compileOnly "mezz.jei:jei-26.3-neoforge:31.16.0.87"
+
     // Example optional mod dependency with JEI
     // The JEI API is declared for compile time use, while the full JEI artifact is used at runtime
     // compileOnly "mezz.jei:jei-${mc_version}-common-api:${jei_version}"
@@ -182,6 +187,8 @@ publishing {
         }
     }
     repositories {
+    // JEI (compile only integration, the jar is loaded from run/mods at runtime)
+    maven { url = 'https://maven.blamejared.com' }
         maven {
             url "file://${project.projectDir}/repo"
         }
