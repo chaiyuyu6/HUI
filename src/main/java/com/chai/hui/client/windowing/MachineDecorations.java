@@ -2,7 +2,11 @@ package com.chai.hui.client.windowing;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.ChatFormatting;
 import net.minecraft.client.gui.screens.inventory.EnchantmentNames;
+import net.minecraft.core.registries.Registries;
+import net.minecraft.network.chat.Component;
+import net.minecraft.world.item.enchantment.Enchantment;
 import net.minecraft.client.renderer.state.MapRenderState;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.world.item.Items;
@@ -145,7 +149,7 @@ public final class MachineDecorations {
                 @Override
                 public void render(GuiGraphicsExtractor graphics, AbstractContainerMenu ignored,
                         SlotPosition slotPosition, int mouseX, int mouseY, float partialTick) {
-                    renderEnchanting(graphics, enchantment, slotPosition);
+                    renderEnchanting(graphics, enchantment, slotPosition, mouseX, mouseY);
                 }
 
                 @Override
@@ -501,7 +505,7 @@ public final class MachineDecorations {
     }
 
     private static void renderEnchanting(GuiGraphicsExtractor graphics, EnchantmentMenu menu,
-            SlotPosition slotPosition) {
+            SlotPosition slotPosition, int mouseX, int mouseY) {
         var font = Minecraft.getInstance().font;
         int[] base = enchantingOfferBase(slotPosition);
         for (int index = 0; index < 3; index++) {
@@ -516,8 +520,45 @@ public final class MachineDecorations {
                 String cost = String.valueOf(menu.costs[index]);
                 graphics.text(font, cost, x + 108 - 4 - font.width(cost), y + 5,
                         enabled ? 0xFFFFD180 : 0xFF8CA3B4);
+                if (mouseX >= x && mouseX < x + 108 && mouseY >= y && mouseY < y + 18) {
+                    graphics.setComponentTooltipForNextFrame(font, enchantingTooltip(menu, index), mouseX, mouseY);
+                }
             }
         }
+    }
+
+    /** Vanilla style enchantment hint tooltip (name, lapis cost, level cost and requirement). */
+    private static java.util.List<Component> enchantingTooltip(EnchantmentMenu menu, int index) {
+        Minecraft minecraft = Minecraft.getInstance();
+        java.util.List<Component> texts = new java.util.ArrayList<>();
+        if (minecraft.player == null || minecraft.level == null) {
+            return texts;
+        }
+        java.util.Optional<net.minecraft.core.Holder.Reference<Enchantment>> enchant = minecraft.level.registryAccess()
+                .lookupOrThrow(Registries.ENCHANTMENT).get(menu.enchantClue[index]);
+        texts.add(Component.translatable("container.enchant.clue",
+                enchant.isEmpty() ? "" : Enchantment.getFullname(enchant.get(), menu.levelClue[index]))
+                .withStyle(ChatFormatting.WHITE));
+        if (enchant.isEmpty()) {
+            texts.add(Component.literal(""));
+            texts.add(Component.translatable("neoforge.container.enchant.limitedEnchantability")
+                    .withStyle(ChatFormatting.RED));
+        }
+        int lapisCost = index + 1;
+        boolean creative = minecraft.player.getAbilities().instabuild;
+        boolean hasLapis = menu.getGoldCount() >= lapisCost || creative;
+        boolean hasLevels = minecraft.player.experienceLevel >= menu.costs[index] || creative;
+        Component lapisLine = lapisCost == 1 ? Component.translatable("container.enchant.lapis.one")
+                : Component.translatable("container.enchant.lapis.many", lapisCost);
+        texts.add(lapisLine.copy().withStyle(hasLapis ? ChatFormatting.GRAY : ChatFormatting.RED));
+        Component levelLine = menu.costs[index] == 1 ? Component.translatable("container.enchant.level.one")
+                : Component.translatable("container.enchant.level.many", menu.costs[index]);
+        texts.add(levelLine.copy().withStyle(hasLevels ? ChatFormatting.GRAY : ChatFormatting.RED));
+        if (!hasLevels) {
+            texts.add(Component.translatable("container.enchant.level.requirement", menu.costs[index])
+                    .withStyle(ChatFormatting.RED));
+        }
+        return texts;
     }
 
     private static boolean clickEnchanting(net.minecraft.client.input.MouseButtonEvent event, EnchantmentMenu menu,
