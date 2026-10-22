@@ -2,11 +2,17 @@ package com.chai.hui.client.windowing;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.client.gui.screens.inventory.EnchantmentNames;
 import net.minecraft.client.gui.screens.inventory.InventoryScreen;
 import net.minecraft.world.inventory.AbstractContainerMenu;
 import net.minecraft.world.inventory.AbstractFurnaceMenu;
 import net.minecraft.world.inventory.BrewingStandMenu;
 import net.minecraft.world.inventory.InventoryMenu;
+import net.minecraft.world.inventory.AnvilMenu;
+import net.minecraft.world.inventory.CartographyTableMenu;
+import net.minecraft.world.inventory.CraftingMenu;
+import net.minecraft.world.inventory.EnchantmentMenu;
+import net.minecraft.world.inventory.SmithingMenu;
 import net.minecraft.world.inventory.StonecutterMenu;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.crafting.SelectableRecipe;
@@ -47,7 +53,7 @@ public final class MachineDecorations {
 
     // ===== 可调参数（想微调动画/候选列表的位置就改这里） =====
     /** 熔炉火焰相对燃料槽的 inset（像素）。 */
-    private static final int FURNACE_FLAME_INSET = 2;
+    private static final int FURNACE_FLAME_INSET = 18;
     /** 烧炼进度条离输入槽右边的距离。 */
     private static final int FURNACE_BAR_LEFT_GAP = 21;
     /** 烧炼进度条离产出槽左边的距离。 */
@@ -92,6 +98,34 @@ public final class MachineDecorations {
                 public boolean mouseClicked(net.minecraft.client.input.MouseButtonEvent event,
                         AbstractContainerMenu ignored, SlotPosition slotPosition) {
                     return clickStonecutter(event, stonecutter, slotPosition);
+                }
+            };
+        }
+        if (menu instanceof CraftingMenu) {
+            return MachineDecorations::renderCrafting;
+        }
+        if (menu instanceof AnvilMenu) {
+            return MachineDecorations::renderAnvil;
+        }
+        if (menu instanceof SmithingMenu) {
+            return MachineDecorations::renderSmithing;
+        }
+        if (menu instanceof CartographyTableMenu cartography) {
+            return (graphics, ignored, slotPosition, mouseX, mouseY, partialTick) -> renderCartography(graphics,
+                    cartography, slotPosition);
+        }
+        if (menu instanceof EnchantmentMenu enchantment) {
+            return new Renderer() {
+                @Override
+                public void render(GuiGraphicsExtractor graphics, AbstractContainerMenu ignored,
+                        SlotPosition slotPosition, int mouseX, int mouseY, float partialTick) {
+                    renderEnchanting(graphics, enchantment, slotPosition);
+                }
+
+                @Override
+                public boolean mouseClicked(net.minecraft.client.input.MouseButtonEvent event,
+                        AbstractContainerMenu ignored, SlotPosition slotPosition) {
+                    return clickEnchanting(event, enchantment, slotPosition);
                 }
             };
         }
@@ -275,6 +309,162 @@ public final class MachineDecorations {
         return false;
     }
 
+    // --- crafting table / anvil / smithing table: HUI plus signs and static arrows -----------
+
+    private static void drawPlus(GuiGraphicsExtractor graphics, int centerX, int centerY, int color) {
+        graphics.fill(centerX - 1, centerY - 5, centerX + 1, centerY + 6, color);
+        graphics.fill(centerX - 5, centerY - 1, centerX + 6, centerY + 1, color);
+    }
+
+    private static void drawArrow(GuiGraphicsExtractor graphics, int x, int y, int width, int color) {
+        int body = Math.max(4, width - 4);
+        graphics.fill(x, y - 2, x + body, y + 2, color);
+        for (int step = 0; step < 4; step++) {
+            graphics.fill(x + body + step, y - (4 - step), x + body + step + 1, y + (4 - step), color);
+        }
+    }
+
+    private static void renderCrafting(GuiGraphicsExtractor graphics, AbstractContainerMenu menu,
+            SlotPosition slotPosition, int mouseX, int mouseY, float partialTick) {
+        int[] gridRight = slotPosition.get(3);
+        int[] middle = slotPosition.get(5);
+        int[] result = slotPosition.get(0);
+        int startX = gridRight[0] + 20;
+        int width = result[0] - 4 - startX;
+        if (width > 6) {
+            drawArrow(graphics, startX, middle[1] + 8, width, ACCENT);
+        }
+    }
+
+    private static void renderAnvil(GuiGraphicsExtractor graphics, AbstractContainerMenu menu,
+            SlotPosition slotPosition, int mouseX, int mouseY, float partialTick) {
+        int[] first = slotPosition.get(0);
+        int[] second = slotPosition.get(1);
+        int[] result = slotPosition.get(2);
+        drawPlus(graphics, (first[0] + second[0] + 16) / 2, first[1] + 8, 0xFF8CA3B4);
+        int startX = second[0] + 20;
+        int width = result[0] - 4 - startX;
+        if (width > 6) {
+            drawArrow(graphics, startX, second[1] + 8, width, ACCENT);
+        }
+    }
+
+    private static void renderSmithing(GuiGraphicsExtractor graphics, AbstractContainerMenu menu,
+            SlotPosition slotPosition, int mouseX, int mouseY, float partialTick) {
+        int[] template = slotPosition.get(SmithingMenu.TEMPLATE_SLOT);
+        int[] base = slotPosition.get(SmithingMenu.BASE_SLOT);
+        int[] addition = slotPosition.get(SmithingMenu.ADDITIONAL_SLOT);
+        int[] result = slotPosition.get(SmithingMenu.RESULT_SLOT);
+        drawPlus(graphics, (template[0] + base[0] + 16) / 2, template[1] + 8, 0xFF8CA3B4);
+        drawPlus(graphics, (base[0] + addition[0] + 16) / 2, base[1] + 8, 0xFF8CA3B4);
+        int startX = addition[0] + 20;
+        int width = result[0] - 4 - startX;
+        if (width > 6) {
+            drawArrow(graphics, startX, addition[1] + 8, width, ACCENT);
+        }
+    }
+
+    private static void renderCartography(GuiGraphicsExtractor graphics, CartographyTableMenu menu,
+            SlotPosition slotPosition) {
+        int[] map = slotPosition.get(CartographyTableMenu.MAP_SLOT);
+        int[] additional = slotPosition.get(CartographyTableMenu.ADDITIONAL_SLOT);
+        int[] result = slotPosition.get(CartographyTableMenu.RESULT_SLOT);
+        int previewX = map[0] + 36;
+        int previewY = map[1] - 4;
+        int previewRight = Math.max(previewX + 24, result[0] - 4);
+        int previewBottom = previewY + 40;
+        graphics.fill(previewX, previewY, previewRight, previewBottom, 0x330B0F14);
+        graphics.outline(previewX, previewY, previewRight - previewX, previewBottom - previewY, 0xFF2F4353);
+        ItemStack mapStack = menu.getSlot(CartographyTableMenu.MAP_SLOT).getItem();
+        if (!mapStack.isEmpty()) {
+            int centerX = (previewX + previewRight) / 2 - 16;
+            int centerY = (previewY + previewBottom) / 2 - 16;
+            graphics.pose().pushMatrix();
+            graphics.pose().translate(centerX, centerY);
+            graphics.pose().scale(2.0F, 2.0F);
+            graphics.item(mapStack, 0, 0);
+            graphics.pose().popMatrix();
+        }
+        int startX = additional[0] + 20;
+        int width = result[0] - 4 - startX;
+        if (width > 6) {
+            drawArrow(graphics, startX, result[1] + 8, width, ACCENT);
+        }
+    }
+
+    // --- enchanting table ---------------------------------------------------------------------
+
+    /** Layout for the enchanting table window: item slot + lapis slot on the left, three offer rows. */
+    public static int[] enchantingSlotPosition(net.minecraft.world.inventory.Slot slot) {
+        if (slot.index == 0) {
+            return new int[] {8, 52};
+        }
+        if (slot.index == 1) {
+            return new int[] {28, 52};
+        }
+        return new int[] {8, 52};
+    }
+
+    private static int[] enchantingOfferBase(SlotPosition slotPosition) {
+        int[] lapis = slotPosition.get(1);
+        return new int[] {lapis[0] + 16, lapis[1] - 44};
+    }
+
+    private static boolean enchantingOfferEnabled(EnchantmentMenu menu, int index) {
+        Minecraft minecraft = Minecraft.getInstance();
+        if (minecraft.player == null) {
+            return false;
+        }
+        int cost = menu.costs[index];
+        if (cost <= 0 || menu.enchantClue[index] == -1) {
+            return false;
+        }
+        boolean hasLevels = minecraft.player.experienceLevel >= cost
+                || minecraft.player.getAbilities().instabuild;
+        boolean hasLapis = menu.getGoldCount() > index || minecraft.player.getAbilities().instabuild;
+        return hasLevels && hasLapis;
+    }
+
+    private static void renderEnchanting(GuiGraphicsExtractor graphics, EnchantmentMenu menu,
+            SlotPosition slotPosition) {
+        var font = Minecraft.getInstance().font;
+        int[] base = enchantingOfferBase(slotPosition);
+        for (int index = 0; index < 3; index++) {
+            int x = base[0];
+            int y = base[1] + index * 19;
+            boolean enabled = enchantingOfferEnabled(menu, index);
+            graphics.fill(x, y, x + 108, y + 18, enabled ? 0x443FC7FF : 0x22000000);
+            graphics.outline(x, y, 108, 18, enabled ? ACCENT : 0xFF2F4353);
+            if (menu.costs[index] > 0) {
+                String name = EnchantmentNames.getInstance().getRandomName(font, menu.levelClue[index]).getString();
+                graphics.text(font, name, x + 3, y + 5, enabled ? 0xFFE6EDF3 : 0xFF8CA3B4);
+                String cost = String.valueOf(menu.costs[index]);
+                graphics.text(font, cost, x + 108 - 4 - font.width(cost), y + 5,
+                        enabled ? 0xFFFFD180 : 0xFF8CA3B4);
+            }
+        }
+    }
+
+    private static boolean clickEnchanting(net.minecraft.client.input.MouseButtonEvent event, EnchantmentMenu menu,
+            SlotPosition slotPosition) {
+        Minecraft minecraft = Minecraft.getInstance();
+        if (minecraft.player == null) {
+            return false;
+        }
+        int[] base = enchantingOfferBase(slotPosition);
+        for (int index = 0; index < 3; index++) {
+            int x = base[0];
+            int y = base[1] + index * 19;
+            if (event.x() >= x && event.x() < x + 108 && event.y() >= y && event.y() < y + 18
+                    && enchantingOfferEnabled(menu, index)) {
+                if (menu.clickMenuButton(minecraft.player, index)) {
+                    minecraft.gameMode.handleInventoryButtonClick(menu.containerId, index);
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
     private static void renderPlayerPreview(GuiGraphicsExtractor graphics, AbstractContainerMenu menu,
             SlotPosition slotPosition, int mouseX, int mouseY, float partialTick) {
         Minecraft minecraft = Minecraft.getInstance();

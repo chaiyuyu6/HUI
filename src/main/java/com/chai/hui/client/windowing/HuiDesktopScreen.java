@@ -228,6 +228,11 @@ public final class HuiDesktopScreen extends Screen {
                         slot -> !(slot.container instanceof net.minecraft.world.entity.player.Inventory), sourcePos,
                         MachineDecorations::stonecutterSlotPosition, 186, 78)
                         .withDecoration(MachineDecorations.forMenu(menu));
+            } else if (menu instanceof net.minecraft.world.inventory.EnchantmentMenu) {
+                content = new VanillaMenuUiContent(menu, screen.getTitle(),
+                        slot -> !(slot.container instanceof net.minecraft.world.entity.player.Inventory), sourcePos,
+                        MachineDecorations::enchantingSlotPosition, 186, 82)
+                        .withDecoration(MachineDecorations.forMenu(menu));
             } else {
                 content = new VanillaMenuUiContent(menu, screen.getTitle(),
                         slot -> !(slot.container instanceof net.minecraft.world.entity.player.Inventory), sourcePos)
