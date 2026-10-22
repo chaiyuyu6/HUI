@@ -47,8 +47,8 @@ public final class HuiWindowTypes {
             if (player.hasInfiniteMaterials()) {
                 return notAvailableHere();
             }
-            // Vanilla InventoryScreen inside a HUI window: player preview, crafting, armor and all vanilla widgets.
-            return EmbeddedScreenContent.survival(player);
+            return new VanillaMenuUiContent(player.inventoryMenu, Component.translatable("hui.window.inventory"),
+                    slot -> true, null).withDecoration(MachineDecorations.forMenu(player.inventoryMenu));
         }));
         register(WindowType.translatable(CREATIVE, "hui.window.creative_inventory", () -> {
             LocalPlayer player = Minecraft.getInstance().player;

@@ -57,6 +57,7 @@ public final class VanillaMenuUiContent implements MenuWindowContent {
     private int quickCraftingRemainder;
     private ItemStack lastQuickMoved = ItemStack.EMPTY;
 
+    private @Nullable MachineDecorations.Renderer decoration;
     private @Nullable Slot hovered;
     private int originX;
     private int originY;
@@ -151,6 +152,12 @@ public final class VanillaMenuUiContent implements MenuWindowContent {
         if (minecraft.player != null) {
             minecraft.player.containerMenu = this.menu;
         }
+    }
+
+    /** Adds HUI style renders for vanilla widgets (furnace flame/arrow, brewing bubbles, player preview, ...). */
+    public VanillaMenuUiContent withDecoration(@Nullable MachineDecorations.Renderer renderer) {
+        this.decoration = renderer;
+        return this;
     }
 
     // --- Layout ----------------------------------------------------------------------------

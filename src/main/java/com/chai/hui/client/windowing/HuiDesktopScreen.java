@@ -220,9 +220,10 @@ public final class HuiDesktopScreen extends Screen {
                     menuFactory.build(new com.chai.hui.client.ui.MenuUiContext(menu, screen.getTitle(),
                             () -> com.chai.hui.client.ui.MenuUiContext.activateMenu(menu))));
         } else {
-            // Reuse the vanilla container screen: its custom widgets (furnace arrows, stone cutter candidates,
-            // cartography preview, enchanting table, brewing bubbles, slot hints) are drawn by vanilla code.
-            content = EmbeddedScreenContent.blockEntity(screen, sourcePos);
+            // HUI style slots plus HUI re-implementations of the vanilla widgets (furnace flame/arrow, brewing bubbles...).
+            content = new VanillaMenuUiContent(screen.getMenu(), screen.getTitle(),
+                    slot -> !(slot.container instanceof net.minecraft.world.entity.player.Inventory), sourcePos)
+                    .withDecoration(MachineDecorations.forMenu(screen.getMenu()));
         }
         HuiWindow restored = sourcePos == null ? null : this.pendingRestores.remove(sourcePos);
         if (restored != null) {
