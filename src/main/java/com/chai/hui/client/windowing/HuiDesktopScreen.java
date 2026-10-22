@@ -70,6 +70,7 @@ public final class HuiDesktopScreen extends Screen {
     private boolean pendingContainerPersist = true;
     private final java.util.Map<net.minecraft.core.BlockPos, HuiWindow> transientBlockWindows = new java.util.HashMap<>();
     private final java.util.Map<net.minecraft.core.BlockPos, HuiWindow> blockUiWindows = new java.util.HashMap<>();
+    private boolean preserveOnExternalScreen;
     private @Nullable net.minecraft.core.BlockPos pendingBlockUiPos;
     private @Nullable Component pendingBlockUiTitle;
     private @Nullable WindowContent pendingBlockUiContent;
@@ -1104,6 +1105,22 @@ public final class HuiDesktopScreen extends Screen {
             if (!window.minimized() && window.contains(mouseX, mouseY)) {
                 return window;
             }
+        }
+        return null;
+    }
+
+    /**
+     * Keeps the desktop state (windows, open menus) when another screen temporarily replaces it, e.g. JEI's recipes GUI
+     * opened for a recipe transfer. The desktop is shown again when that external screen closes.
+     */
+    public void preserveAcrossExternalScreen() {
+        this.preserveOnExternalScreen = true;
+    }
+
+    /** @return the menu of the active server backed window (e.g. the machine the player is interacting with). */
+    public @Nullable net.minecraft.world.inventory.AbstractContainerMenu activeServerMenu() {
+        if (this.activeContent != null && this.activeContent.serverBacked()) {
+            return this.activeContent.screenMenu();
         }
         return null;
     }
