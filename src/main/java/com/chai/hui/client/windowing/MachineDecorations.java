@@ -3,6 +3,12 @@ package com.chai.hui.client.windowing;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.screens.inventory.EnchantmentNames;
+import net.minecraft.client.renderer.state.MapRenderState;
+import net.minecraft.core.component.DataComponents;
+import net.minecraft.world.item.Items;
+import net.minecraft.world.item.MapItem;
+import net.minecraft.world.level.saveddata.maps.MapId;
+import net.minecraft.world.level.saveddata.maps.MapItemSavedData;
 import net.minecraft.client.gui.screens.inventory.InventoryScreen;
 import net.minecraft.world.inventory.AbstractContainerMenu;
 import net.minecraft.world.inventory.AbstractFurnaceMenu;
@@ -50,6 +56,14 @@ public final class MachineDecorations {
     private static final int ACCENT_GLOW = 0xFF7FD9FF;
     private static final int FUEL = 0xFFFFB74D;
     private static final int FUEL_GLOW = 0xFFFFD180;
+    private static final net.minecraft.resources.Identifier SCALED_MAP_SPRITE =
+            net.minecraft.resources.Identifier.withDefaultNamespace("container/cartography_table/scaled_map");
+    private static final net.minecraft.resources.Identifier DUPLICATED_MAP_SPRITE =
+            net.minecraft.resources.Identifier.withDefaultNamespace("container/cartography_table/duplicated_map");
+    private static final net.minecraft.resources.Identifier MAP_SPRITE =
+            net.minecraft.resources.Identifier.withDefaultNamespace("container/cartography_table/map");
+    private static final net.minecraft.resources.Identifier LOCKED_SPRITE =
+            net.minecraft.resources.Identifier.withDefaultNamespace("container/cartography_table/locked");
 
     // ===== 可调参数（想微调动画/候选列表的位置就改这里） =====
     /** 熔炉火焰相对燃料槽的 inset（像素）。 */
@@ -111,8 +125,15 @@ public final class MachineDecorations {
             return MachineDecorations::renderSmithing;
         }
         if (menu instanceof CartographyTableMenu cartography) {
-            return (graphics, ignored, slotPosition, mouseX, mouseY, partialTick) -> renderCartography(graphics,
-                    cartography, slotPosition);
+            return new Renderer() {
+                private final MapRenderState mapRenderState = new MapRenderState();
+
+                @Override
+                public void render(GuiGraphicsExtractor graphics, AbstractContainerMenu ignored,
+                        SlotPosition slotPosition, int mouseX, int mouseY, float partialTick) {
+                    renderCartography(graphics, cartography, slotPosition, this.mapRenderState);
+                }
+            };
         }
         if (menu instanceof EnchantmentMenu enchantment) {
             return new Renderer() {
@@ -365,33 +386,69 @@ public final class MachineDecorations {
     }
 
     private static void renderCartography(GuiGraphicsExtractor graphics, CartographyTableMenu menu,
-            SlotPosition slotPosition) {
-        int[] map = slotPosition.get(CartographyTableMenu.MAP_SLOT);
-        int[] additional = slotPosition.get(CartographyTableMenu.ADDITIONAL_SLOT);
-        int[] result = slotPosition.get(CartographyTableMenu.RESULT_SLOT);
-        int previewX = map[0] + 36;
-        int previewY = map[1] - 4;
-        int previewRight = Math.max(previewX + 24, result[0] - 4);
-        int previewBottom = previewY + 40;
-        graphics.fill(previewX, previewY, previewRight, previewBottom, 0x330B0F14);
-        graphics.outline(previewX, previewY, previewRight - previewX, previewBottom - previewY, 0xFF2F4353);
+            SlotPosition slotPosition, MapRenderState mapRenderState) {
+        Minecraft minecraft = Minecraft.getInstance();
         ItemStack mapStack = menu.getSlot(CartographyTableMenu.MAP_SLOT).getItem();
-        if (!mapStack.isEmpty()) {
-            int centerX = (previewX + previewRight) / 2 - 16;
-            int centerY = (previewY + previewBottom) / 2 - 16;
-            graphics.pose().pushMatrix();
-            graphics.pose().translate(centerX, centerY);
-            graphics.pose().scale(2.0F, 2.0F);
-            graphics.item(mapStack, 0, 0);
-            graphics.pose().popMatrix();
-        }
-        int startX = additional[0] + 20;
-        int width = result[0] - 4 - startX;
-        if (width > 6) {
-            drawArrow(graphics, startX, result[1] + 8, width, ACCENT);
+        ItemStack additional = menu.getSlot(CartographyTableMenu.ADDITIONAL_SLOT).getItem();
+        MapId mapId = mapStack.get(DataComponents.MAP_ID);
+        MapItemSavedData mapData = mapId == null ? null : MapItem.getSavedData(mapId, minecraft.level);
+        boolean duplication = additional.is(Items.MAP);
+        boolean scaling = additional.is(Items.PAPER);
+        boolean locking = additional.is(Items.GLASS_PANE);
+        boolean locked = mapData != null && mapData.locked;
+
+        int[] base = slotPosition.get(CartographyTableMenu.MAP_SLOT);
+        int px = base[0] + 40;
+        int py = base[1];
+        if (scaling && !locked) {
+            graphics.blitSprite(net.minecraft.client.renderer.RenderPipelines.GUI_TEXTURED, SCALED_MAP_SPRITE, px, py,
+                    66, 66);
+            renderMap(graphics, mapId, mapData, mapRenderState, px + 18, py + 18, 0.226F);
+        } else if (duplication) {
+            graphics.blitSprite(net.minecraft.client.renderer.RenderPipelines.GUI_TEXTURED, DUPLICATED_MAP_SPRITE,
+                    px + 16, py, 50, 66);
+            renderMap(graphics, mapId, mapData, mapRenderState, px + 19, py + 3, 0.34F);
+            graphics.nextStratum();
+            graphics.blitSprite(net.minecraft.client.renderer.RenderPipelines.GUI_TEXTURED, DUPLICATED_MAP_SPRITE, px,
+                    py + 16, 50, 66);
+            renderMap(graphics, mapId, mapData, mapRenderState, px + 3, py + 19, 0.34F);
+        } else if (locking) {
+            graphics.blitSprite(net.minecraft.client.renderer.RenderPipelines.GUI_TEXTURED, MAP_SPRITE, px, py, 66, 66);
+            renderMap(graphics, mapId, mapData, mapRenderState, px + 4, py + 4, 0.45F);
+            graphics.blitSprite(net.minecraft.client.renderer.RenderPipelines.GUI_TEXTURED, LOCKED_SPRITE, px + 51,
+                    py + 47, 10, 14);
+        } else {
+            graphics.blitSprite(net.minecraft.client.renderer.RenderPipelines.GUI_TEXTURED, MAP_SPRITE, px, py, 66, 66);
+            renderMap(graphics, mapId, mapData, mapRenderState, px + 4, py + 4, 0.45F);
         }
     }
 
+    private static void renderMap(GuiGraphicsExtractor graphics, MapId mapId, MapItemSavedData mapData,
+            MapRenderState mapRenderState, int x, int y, float scale) {
+        if (mapId == null || mapData == null) {
+            return;
+        }
+        graphics.pose().pushMatrix();
+        graphics.pose().translate(x, y);
+        graphics.pose().scale(scale, scale);
+        Minecraft.getInstance().getMapRenderer().extractRenderState(mapId, mapData, mapRenderState);
+        graphics.map(mapRenderState);
+        graphics.pose().popMatrix();
+    }
+
+    /** Layout for the cartography table window: map + additional slot on the left, map preview, result on the right. */
+    public static int[] cartographySlotPosition(net.minecraft.world.inventory.Slot slot) {
+        if (slot.index == CartographyTableMenu.MAP_SLOT) {
+            return new int[] {8, 8};
+        }
+        if (slot.index == CartographyTableMenu.ADDITIONAL_SLOT) {
+            return new int[] {8, 46};
+        }
+        if (slot.index == CartographyTableMenu.RESULT_SLOT) {
+            return new int[] {160, 8};
+        }
+        return new int[] {8, 8};
+    }
     // --- enchanting table ---------------------------------------------------------------------
 
     /** Layout for the enchanting table window: item slot + lapis slot on the left, three offer rows. */
