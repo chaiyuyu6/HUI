@@ -64,9 +64,12 @@ public final class HuiJeiPlugin implements IModPlugin {
     private void onScreenOpening(ScreenEvent.Opening event) {
         Screen next = event.getNewScreen();
         if (next instanceof mezz.jei.gui.recipes.RecipesGui recipesGui) {
+            HuiMod.LOGGER.info("[HUI] JEI recipes gui opening, current={}", event.getCurrentScreen());
             if (event.getCurrentScreen() instanceof HuiDesktopScreen desktop) {
                 AbstractContainerMenu menu = desktop.activeServerMenu();
+                HuiMod.LOGGER.info("[HUI] JEI recipes gui: active HUI menu={}", menu);
                 AbstractContainerScreen<?> proxy = menu == null ? null : createProxyScreen(menu);
+                HuiMod.LOGGER.info("[HUI] JEI recipes gui: proxy screen={}", proxy);
                 if (proxy != null) {
                     desktop.preserveAcrossExternalScreen();
                     setParentScreen(recipesGui, proxy);
