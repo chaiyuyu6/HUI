@@ -1235,6 +1235,21 @@ public final class HuiDesktopScreen extends Screen {
                 return content.screenMenu();
             }
         }
+        HuiWindow bestWindow = null;
+        for (HuiWindow window : this.windows) {
+            if (window.minimized() || !(window.content() instanceof MenuWindowContent content)
+                    || !content.serverBacked()) {
+                continue;
+            }
+            if (bestWindow == null || HuiWindowTypes.isInventoryType(window.typeId())
+                    && !HuiWindowTypes.isInventoryType(window.typeId())) {
+                bestWindow = window;
+            }
+        }
+        if (bestWindow != null && bestWindow.content() instanceof MenuWindowContent content) {
+            this.activeContent = content;
+            return content.screenMenu();
+        }
         return null;
     }
 
