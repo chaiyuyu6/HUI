@@ -60,6 +60,8 @@ neoForge {
     runs {
         client {
             client()
+            // JEI Lucene hint: enable the JDK vector incubator module (silences the warning, vector accel).
+            jvmArguments.add '--add-modules=jdk.incubator.vector'
             // 调试用：`gradlew runClient -PquickPlay=<存档名>` 直接进入指定单人存档。
             if (project.hasProperty('quickPlay')) {
                 programArguments.addAll '--quickPlaySingleplayer', project.property('quickPlay')
