@@ -161,3 +161,17 @@ HuiBlockUiServer.register(MyBlockEntities.MACHINE.get(), new HuiBlockUiServer.Pr
 | 页签拖拽排序 | 使用原版注册顺序 |
 
 由用户实测验证（本轮未启动游戏）。
+
+## 9. 默认策略调整：照搬原版（复用原版代码）
+
+截图暴露了 HUI 自绘创造物品栏的布局 bug（`Ui.copy` 把 row 的 direction 覆盖成 column，导致页签行全宽/物品网格
+不显示）。按"完全照搬原版、可复用原版代码"的要求：
+
+- `windowing.nativeUi` 默认改为 **false**：容器窗口、生存/默认物品栏窗口、创造物品栏窗口全部**嵌入原版
+  Screen**（原版代码原样渲染，像素/行为一致），HUI 只负责窗口化（桌面/页面/拖动/固定/关闭）；
+- `windowing.nativeUi=true` 可切回 HUI 自绘 UI 做实验（创造栏布局 bug 已修，但整体仍不如原版完整）；
+- HUI 框架（`UiNode/UiStyle/UiAnimation/UiWindowContent`）与注册通道保留，用于其它模组的自定义 HUI 界面、
+  以及后续逐步替换原版 GUI 的实验。
+
+布局 bug 修复：`UiStyle` 增加 `directionSet/justifySet/alignSet`，只有显式调用时 `Ui.copy` 才覆盖基础方向，
+`Ui.row()`/`Ui.column()` 不再被默认值覆盖。

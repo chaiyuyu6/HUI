@@ -76,7 +76,6 @@ public final class HuiCreativeUiContent implements WindowContent {
 
         UiNode main = Ui.column(new UiStyle().gap(4), search, grid, hotbar);
         main.style.align = UiStyle.Align.STRETCH;
-        main.style.widthPercent = 1.0;
 
         this.root = Ui.row(new UiStyle().size(340, 210).padding(6).gap(6).background(Ui.PANEL)
                 .border(Ui.BORDER, 1), sidebar, main);

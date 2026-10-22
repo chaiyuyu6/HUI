@@ -288,3 +288,6 @@ HUI 现在是一个"网页式" UI 框架，并把方块实体 + GUI 的注册通
 - 创造模式物品栏改为 HUI 框架实现（`HuiCreativeUiContent`）：左侧分类页签（含其它模组注册的页签）、搜索框、
   9 列物品网格、快捷栏；拿取/放置走原版创造模式 helper，overlay 层绘制手持物品。
 - 页签数据来自 `CreativeModeTabs.allTabs()` / `tab.getDisplayItems()`，所以**别的 mod 在原版注册的页签会自动同步**。
+
+> 默认策略：`windowing.nativeUi=false`，HUI 窗口直接嵌入原版 Screen（复用原版代码，像素/行为与原版一致）；
+> 想试 HUI 自绘版本可把配置改为 true（实验特性）。

@@ -168,13 +168,13 @@ public final class Ui {
         if (style.gap > 0) {
             base.gap = style.gap;
         }
-        if (style.direction != null) {
+        if (style.directionSet) {
             base.direction = style.direction;
         }
-        if (style.justify != null) {
+        if (style.justifySet) {
             base.justify = style.justify;
         }
-        if (style.align != null) {
+        if (style.alignSet) {
             base.align = style.align;
         }
         if (style.background != 0) {

@@ -43,6 +43,9 @@ public final class UiStyle {
     public Direction direction = Direction.COLUMN;
     public Justify justify = Justify.START;
     public Align align = Align.START;
+    boolean directionSet;
+    boolean justifySet;
+    boolean alignSet;
     public int background = 0;
     public int borderColor = 0;
     public int borderWidth = 0;
@@ -98,21 +101,25 @@ public final class UiStyle {
 
     public UiStyle row() {
         this.direction = Direction.ROW;
+        this.directionSet = true;
         return this;
     }
 
     public UiStyle column() {
         this.direction = Direction.COLUMN;
+        this.directionSet = true;
         return this;
     }
 
     public UiStyle justify(Justify value) {
         this.justify = value;
+        this.justifySet = true;
         return this;
     }
 
     public UiStyle align(Align value) {
         this.align = value;
+        this.alignSet = true;
         return this;
     }
 
