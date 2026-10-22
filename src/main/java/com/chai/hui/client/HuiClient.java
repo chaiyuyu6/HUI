@@ -102,6 +102,36 @@ public final class HuiClient {
                         event.getMouseY(), event.getPartialTick());
             }
         });
+        // HUI owned areas get their input before overlays (JEI) can react: handle the event here and cancel it.
+        NeoForge.EVENT_BUS.addListener(EventPriority.HIGHEST, ScreenEvent.MouseButtonPressed.Pre.class, event -> {
+            if (event.getScreen() instanceof HuiDesktopScreen desktop
+                    && desktop.isOverHuiUi(event.getMouseX(), event.getMouseY())
+                    && desktop.mouseClicked(event.getMouseButtonEvent(), event.isDoubleClick())) {
+                event.setCanceled(true);
+            }
+        });
+        NeoForge.EVENT_BUS.addListener(EventPriority.HIGHEST, ScreenEvent.MouseButtonReleased.Pre.class, event -> {
+            if (event.getScreen() instanceof HuiDesktopScreen desktop
+                    && desktop.isOverHuiUi(event.getMouseX(), event.getMouseY())
+                    && desktop.mouseReleased(event.getMouseButtonEvent())) {
+                event.setCanceled(true);
+            }
+        });
+        NeoForge.EVENT_BUS.addListener(EventPriority.HIGHEST, ScreenEvent.MouseDragged.Pre.class, event -> {
+            if (event.getScreen() instanceof HuiDesktopScreen desktop
+                    && desktop.isOverHuiUi(event.getMouseX(), event.getMouseY())
+                    && desktop.mouseDragged(event.getMouseButtonEvent(), event.getDragX(), event.getDragY())) {
+                event.setCanceled(true);
+            }
+        });
+        NeoForge.EVENT_BUS.addListener(EventPriority.HIGHEST, ScreenEvent.MouseScrolled.Pre.class, event -> {
+            if (event.getScreen() instanceof HuiDesktopScreen desktop
+                    && desktop.isOverHuiUi(event.getMouseX(), event.getMouseY())
+                    && desktop.mouseScrolled(event.getMouseX(), event.getMouseY(), event.getScrollDeltaX(),
+                            event.getScrollDeltaY())) {
+                event.setCanceled(true);
+            }
+        });
     }
     private void onClientTick(ClientTickEvent.Post event) {
         Minecraft minecraft = Minecraft.getInstance();
