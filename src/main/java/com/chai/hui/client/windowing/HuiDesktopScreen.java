@@ -507,11 +507,30 @@ public final class HuiDesktopScreen extends Screen {
 
     // --- Window operations -----------------------------------------------------------------
 
+    /**
+     * Opens an inventory style window from the desktop menus. When the current page already has an inventory window a
+     * new desktop page is created first, so the existing inventory window stays on the previous page.
+     */
+    private void openInventoryWindow(Identifier type) {
+        for (HuiWindow window : this.windows) {
+            if (HuiWindowTypes.isInventoryType(window.typeId())) {
+                addPage();
+                break;
+            }
+        }
+        addWindow(type);
+    }
+
     private void ensureInventoryWindow(Identifier type) {
         for (HuiWindow window : new ArrayList<>(this.windows)) {
-            if (HuiWindowTypes.isInventoryType(window.typeId())) {
-                closeWindow(window);
+            if (!HuiWindowTypes.isInventoryType(window.typeId())) {
+                continue;
             }
+            if (window.typeId().equals(type)) {
+                // A restored inventory window of the right type stays where it was saved.
+                return;
+            }
+            closeWindow(window);
         }
         addWindow(type);
     }
@@ -974,9 +993,9 @@ public final class HuiDesktopScreen extends Screen {
         entries.add(ContextMenu.Entry.of("hui.menu.new_page", this::addPage));
         entries.add(ContextMenu.Entry.of("hui.menu.demo_window", () -> addWindow(HuiWindowTypes.DEMO)));
         entries.add(ContextMenu.Entry.of("hui.menu.open_inventory",
-                () -> ensureInventoryWindow(HuiWindowTypes.inventoryTypeForCurrentGameMode())));
+                () -> openInventoryWindow(HuiWindowTypes.inventoryTypeForCurrentGameMode())));
         entries.add(ContextMenu.Entry.of("hui.menu.open_default_inventory",
-                () -> ensureInventoryWindow(HuiWindowTypes.DEFAULT_INVENTORY)));
+                () -> openInventoryWindow(HuiWindowTypes.DEFAULT_INVENTORY)));
         entries.add(new ContextMenu.Entry(
                 Component.translatable("hui.menu.toggle_inventory", onOff(this.layout.huiInventory)),
                 this::toggleHuiInventory, true));
@@ -1094,9 +1113,8 @@ public final class HuiDesktopScreen extends Screen {
             releaseBlockEntityMenu(window);
         }
         captureActivePage();
-        for (DesktopLayout.PageLayout page : this.layout.pages) {
-            page.windows.removeIf(window -> !window.pinned);
-        }
+        // Every page keeps its windows between sessions: inventory windows are regular windows again and restorable
+        // machine windows come back when their block is still there.
         this.layout.removeEmptyPages();
         DesktopLayoutStore.save(this.layout);
         super.onClose();
