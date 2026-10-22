@@ -1,28 +1,21 @@
 package com.chai.hui.client.windowing;
 
-import com.mojang.blaze3d.platform.cursor.CursorTypes;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.screens.inventory.InventoryScreen;
-import net.minecraft.client.renderer.RenderPipelines;
-import net.minecraft.core.NonNullList;
-import net.minecraft.resources.Identifier;
-import net.minecraft.util.Mth;
 import net.minecraft.world.inventory.AbstractContainerMenu;
 import net.minecraft.world.inventory.AbstractFurnaceMenu;
 import net.minecraft.world.inventory.BlastFurnaceMenu;
 import net.minecraft.world.inventory.BrewingStandMenu;
-import net.minecraft.world.inventory.FurnaceMenu;
 import net.minecraft.world.inventory.InventoryMenu;
 import net.minecraft.world.inventory.SmokerMenu;
-import net.minecraft.world.item.ItemStack;
 import org.jetbrains.annotations.Nullable;
 
 /**
- * HUI style decorations for the vanilla container widgets that {@link VanillaMenuUiContent} does not draw itself:
- * furnace fuel flame and cooking arrow, brewing stand bubbles/arrow/fuel bar and the survival inventory player preview.
+ * HUI style decorations for the vanilla container widgets that {@link VanillaMenuUiContent} does not draw itself.
  *
- * <p>Positions are given in vanilla screen coordinates and translated to the HUI slot layout with the slot offset.
+ * <p>Instead of blitting the vanilla progress sprites, HUI draws its own animated bars/flames: a pulsing fill, a moving
+ * highlight and the theme colours. Positions use the vanilla screen coordinates translated to the HUI slot layout.
  */
 public final class MachineDecorations {
     @FunctionalInterface
@@ -31,22 +24,12 @@ public final class MachineDecorations {
                 int minY, int mouseX, int mouseY, float partialTick);
     }
 
-    private static final int[] BUBBLE_LENGTHS = {29, 24, 20, 16, 11, 6, 0};
-    private static final Identifier FURNACE = Identifier.withDefaultNamespace("textures/gui/container/furnace.png");
-    private static final Identifier BLAST_FURNACE =
-            Identifier.withDefaultNamespace("textures/gui/container/blast_furnace.png");
-    private static final Identifier SMOKER = Identifier.withDefaultNamespace("textures/gui/container/smoker.png");
-    private static final Identifier FURNACE_LIT = Identifier.withDefaultNamespace("container/furnace/lit_progress");
-    private static final Identifier FURNACE_BURN = Identifier.withDefaultNamespace("container/furnace/burn_progress");
-    private static final Identifier BLAST_LIT = Identifier.withDefaultNamespace("container/blast_furnace/lit_progress");
-    private static final Identifier BLAST_BURN = Identifier.withDefaultNamespace("container/blast_furnace/burn_progress");
-    private static final Identifier SMOKER_LIT = Identifier.withDefaultNamespace("container/smoker/lit_progress");
-    private static final Identifier SMOKER_BURN = Identifier.withDefaultNamespace("container/smoker/burn_progress");
-    private static final Identifier BREW_FUEL =
-            Identifier.withDefaultNamespace("container/brewing_stand/fuel_length");
-    private static final Identifier BREW_PROGRESS =
-            Identifier.withDefaultNamespace("container/brewing_stand/brew_progress");
-    private static final Identifier BREW_BUBBLES = Identifier.withDefaultNamespace("container/brewing_stand/bubbles");
+    private static final int TRACK = 0xFF0B0F14;
+    private static final int TRACK_BORDER = 0xFF2F4353;
+    private static final int ACCENT = 0xFF3FC7FF;
+    private static final int ACCENT_GLOW = 0xFF7FD9FF;
+    private static final int FUEL = 0xFFFFB74D;
+    private static final int FUEL_GLOW = 0xFFFFD180;
 
     private MachineDecorations() {
     }
@@ -66,60 +49,101 @@ public final class MachineDecorations {
         return null;
     }
 
-    private static void renderFurnace(GuiGraphicsExtractor graphics, AbstractFurnaceMenu menu, int originX, int originY,
-            int minX, int minY) {
-        Identifier litSprite;
-        Identifier burnSprite;
-        if (menu instanceof BlastFurnaceMenu) {
-            litSprite = BLAST_LIT;
-            burnSprite = BLAST_BURN;
-        } else if (menu instanceof SmokerMenu) {
-            litSprite = SMOKER_LIT;
-            burnSprite = SMOKER_BURN;
-        } else if (menu instanceof FurnaceMenu) {
-            litSprite = FURNACE_LIT;
-            burnSprite = FURNACE_BURN;
-        } else {
-            litSprite = FURNACE_LIT;
-            burnSprite = FURNACE_BURN;
+    private static float wave() {
+        // 0..1 pulsing value shared by the HUI progress animations.
+        return 0.5F + 0.5F * (float) Math.sin(System.nanoTime() / 180_000_000.0);
+    }
+
+    private static int withAlpha(int argb, float alpha) {
+        int a = (int) (((argb >>> 24) & 0xFF) * Math.max(0.0F, Math.min(1.0F, alpha)));
+        return (a << 24) | (argb & 0x00FFFFFF);
+    }
+
+    private static void renderFurnace(GuiGraphicsExtractor graphics, AbstractFurnaceMenu menu, int originX,
+            int originY, int minX, int minY) {
+        float burn = menu.getBurnProgress();
+        boolean lit = menu.isLit();
+        float litProgress = menu.getLitProgress();
+
+        // Fuel meter: vertical HUI bar at the vanilla flame position.
+        int fuelX = originX + (56 - minX);
+        int fuelY = originY + (36 - minY);
+        drawTrack(graphics, fuelX, fuelY, 14, 14);
+        int fuelHeight = Math.round(13.0F * litProgress);
+        if (fuelHeight > 0) {
+            float glow = lit ? 0.65F + 0.35F * wave() : 0.5F;
+            int color = lit ? withAlpha(FUEL_GLOW, 0.35F + 0.25F * wave()) : withAlpha(FUEL, 0.6F);
+            graphics.fill(fuelX + 2, fuelY + 2 + (12 - fuelHeight), fuelX + 12, fuelY + 2 + 12,
+                    withAlpha(FUEL, 0.75F));
+            graphics.fill(fuelX + 3, fuelY + 3 + (12 - fuelHeight), fuelX + 11,
+                    fuelY + 3 + 12, withAlpha(color, glow));
+            if (lit) {
+                // A small spark travelling up the fill.
+                int sparkY = fuelY + 2 + (12 - fuelHeight) + (int) ((12 - fuelHeight) * (1.0F - wave()));
+                graphics.fill(fuelX + 5, sparkY, fuelX + 9, sparkY + 1, withAlpha(FUEL_GLOW, 0.9F));
+            }
         }
-        int xo = originX + (56 - minX);
-        int yo = originY + (36 - minY);
-        if (menu.isLit()) {
-            int height = Mth.ceil(menu.getLitProgress() * 13.0F) + 1;
-            graphics.blitSprite(RenderPipelines.GUI_TEXTURED, litSprite, 14, 14, 0, 14 - height, xo,
-                    yo + 14 - height, 14, height);
+
+        // Cooking arrow: horizontal HUI bar at the vanilla arrow position with a moving highlight.
+        int arrowX = originX + (79 - minX);
+        int arrowY = originY + (34 - minY);
+        int barY = arrowY + 6;
+        drawTrack(graphics, arrowX, barY, 24, 5);
+        int fillWidth = Math.round(23.0F * burn);
+        if (fillWidth > 0) {
+            graphics.fill(arrowX + 1, barY + 1, arrowX + 1 + fillWidth, barY + 4, withAlpha(ACCENT, 0.8F));
+            int shimmerX = arrowX + 1 + (int) ((fillWidth - 2) * wave());
+            graphics.fill(shimmerX, barY + 1, shimmerX + 2, barY + 4, withAlpha(ACCENT_GLOW, 0.9F));
         }
-        int width = Mth.ceil(menu.getBurnProgress() * 24.0F);
-        if (width > 0) {
-            graphics.blitSprite(RenderPipelines.GUI_TEXTURED, burnSprite, 24, 16, 0, 0,
-                    originX + (79 - minX), originY + (34 - minY), width, 16);
+        // Tip glow when cooking is done.
+        if (burn >= 1.0F) {
+            graphics.fill(arrowX + 24, barY - 1, arrowX + 27, barY + 6, withAlpha(ACCENT_GLOW, 0.5F + 0.5F * wave()));
         }
     }
 
     private static void renderBrewing(GuiGraphicsExtractor graphics, BrewingStandMenu menu, int originX, int originY,
             int minX, int minY) {
+        // Fuel bar: horizontal HUI bar at the vanilla fuel position.
         int fuel = menu.getFuel();
         int totalFuel = menu.getTotalFuel();
-        int fuelLength = totalFuel > 0 ? Mth.clamp(Mth.positiveCeilDiv(18 * fuel, totalFuel), 0, 18) : 0;
-        if (fuelLength > 0) {
-            graphics.blitSprite(RenderPipelines.GUI_TEXTURED, BREW_FUEL, 18, 4, 0, 0,
-                    originX + (60 - minX), originY + (44 - minY), fuelLength, 4);
+        int fuelX = originX + (60 - minX);
+        int fuelY = originY + (44 - minY);
+        drawTrack(graphics, fuelX, fuelY, 18, 4);
+        if (totalFuel > 0 && fuel > 0) {
+            int width = Math.max(1, Math.min(17, Math.round(17.0F * fuel / totalFuel)));
+            graphics.fill(fuelX + 1, fuelY + 1, fuelX + 1 + width, fuelY + 3, withAlpha(FUEL, 0.85F));
         }
+
         int brewingTicks = menu.getBrewingTicks();
         int totalTicks = menu.getTotalBrewingTicks();
         if (brewingTicks > 0 && totalTicks > 0) {
-            int length = (int) (28.0F * (1.0F - (float) brewingTicks / totalTicks));
-            if (length > 0) {
-                graphics.blitSprite(RenderPipelines.GUI_TEXTURED, BREW_PROGRESS, 9, 28, 0, 0,
-                        originX + (97 - minX), originY + (16 - minY), 9, length);
+            // Brew progress: vertical bar where the vanilla arrow is, filling from the bottom.
+            float progress = 1.0F - (float) brewingTicks / totalTicks;
+            int barX = originX + (99 - minX);
+            int barY = originY + (18 - minY);
+            drawTrack(graphics, barX, barY, 5, 26);
+            int filled = Math.round(24.0F * progress);
+            if (filled > 0) {
+                graphics.fill(barX + 1, barY + 1 + (24 - filled), barX + 4, barY + 25,
+                        withAlpha(ACCENT, 0.85F));
+                int shimmerY = barY + 1 + (24 - filled) + (int) ((filled - 2) * wave());
+                graphics.fill(barX + 1, shimmerY, barX + 4, shimmerY + 2, withAlpha(ACCENT_GLOW, 0.9F));
             }
-            int bubbleLength = BUBBLE_LENGTHS[brewingTicks / 2 % 7];
-            if (bubbleLength > 0) {
-                graphics.blitSprite(RenderPipelines.GUI_TEXTURED, BREW_BUBBLES, 12, 29, 0, 29 - bubbleLength,
-                        originX + (63 - minX), originY + (14 + 29 - bubbleLength - minY), 12, bubbleLength);
+
+            // Bubbles: three rising HUI dots instead of the vanilla bubble sprite.
+            int bubbles = (int) (1 + 3 * wave());
+            for (int index = 0; index < bubbles; index++) {
+                float offset = (wave() + index * 0.33F) % 1.0F;
+                int dotX = originX + (64 - minX) + index * 4;
+                int dotY = originY + (40 - minY) - (int) (18 * offset);
+                graphics.fill(dotX, dotY, dotX + 2, dotY + 2, withAlpha(ACCENT_GLOW, 0.35F + 0.5F * (1 - offset)));
             }
         }
+    }
+
+    private static void drawTrack(GuiGraphicsExtractor graphics, int x, int y, int width, int height) {
+        graphics.fill(x, y, x + width, y + height, TRACK);
+        graphics.outline(x, y, width, height, TRACK_BORDER);
     }
 
     private static void renderPlayerPreview(GuiGraphicsExtractor graphics, AbstractContainerMenu menu, int originX,
@@ -132,15 +156,5 @@ public final class MachineDecorations {
         int top = originY + (8 - minY);
         InventoryScreen.extractEntityInInventoryFollowsMouse(graphics, left, top, left + 49, top + 70, 30, 0.0625F,
                 mouseX, mouseY, minecraft.player);
-    }
-
-    /** Whether a slot should show vanilla style hints (used to avoid drawing HUI slot frames twice). */
-    public static boolean hasVanillaHint(AbstractContainerMenu menu, int slotIndex) {
-        return false;
-    }
-
-    /** Unused helper kept for future per-slot hints. */
-    public static NonNullList<ItemStack> emptyList() {
-        return NonNullList.create();
     }
 }
