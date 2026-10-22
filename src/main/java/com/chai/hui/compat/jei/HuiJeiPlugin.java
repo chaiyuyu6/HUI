@@ -52,7 +52,7 @@ public final class HuiJeiPlugin implements IModPlugin {
 
     @Override
     public void registerGuiHandlers(IGuiHandlerRegistration registration) {
-        registration.addGuiScreenHandler(HuiDesktopScreen.class, DesktopGuiProperties::new);
+        registration.addGuiScreenHandler(HuiDesktopScreen.class, new DesktopScreenHandler());
     }
 
     @Override
@@ -80,10 +80,10 @@ public final class HuiJeiPlugin implements IModPlugin {
             }
             return;
         }
-        if (this.transferProxy != null && this.transferDesktop != null && next != null
-                && event.getCurrentScreen() instanceof mezz.jei.gui.recipes.RecipesGui
-                && next.getClass() == this.transferProxy.getClass()) {
+        if (this.transferProxy != null && this.transferDesktop != null
+                && event.getCurrentScreen() instanceof mezz.jei.gui.recipes.RecipesGui) {
             // JEI closed: return to the HUI desktop instead of showing the throwaway vanilla screen.
+            HuiMod.LOGGER.info("[HUI] JEI closed, returning to the HUI desktop");
             event.setNewScreen(this.transferDesktop);
             this.transferProxy = null;
             this.transferDesktop = null;
@@ -116,6 +116,29 @@ public final class HuiJeiPlugin implements IModPlugin {
             field.set(recipesGui, proxy);
         } catch (ReflectiveOperationException exception) {
             HuiMod.LOGGER.warn("[HUI] could not set the JEI parent screen for recipe transfer", exception);
+        }
+    }
+
+    /**
+     * JEI screen handler for the desktop: gui properties for the overlay layout plus clickable ingredients for the
+     * slots of the HUI windows, so hovering a HUI slot shows the JEI recipe/usage hints (R / U).
+     */
+    private static final class DesktopScreenHandler implements mezz.jei.api.gui.handlers.IScreenHandler<HuiDesktopScreen> {
+        @Override
+        public IGuiProperties apply(HuiDesktopScreen screen) {
+            return new DesktopGuiProperties(screen);
+        }
+
+        @Override
+        public java.util.Optional<? extends mezz.jei.api.runtime.IClickableIngredient<?>> getClickableIngredientUnderMouse(
+                mezz.jei.api.gui.builder.IClickableIngredientFactory factory, HuiDesktopScreen screen, double mouseX,
+                double mouseY) {
+            net.minecraft.world.item.ItemStack stack = screen.itemAt(mouseX, mouseY);
+            if (stack == null) {
+                return java.util.Optional.empty();
+            }
+            return factory.createBuilder(stack)
+                    .buildWithArea((int) mouseX - 8, (int) mouseY - 8, 16, 16);
         }
     }
 

@@ -1125,6 +1125,26 @@ public final class HuiDesktopScreen extends Screen {
         return null;
     }
 
+    /** @return the item stack under the mouse inside a window slot (JEI clickable ingredient source). */
+    public @Nullable net.minecraft.world.item.ItemStack itemAt(double mouseX, double mouseY) {
+        for (int index = this.windows.size() - 1; index >= 0; index--) {
+            HuiWindow window = this.windows.get(index);
+            if (window.minimized() || !window.contains(mouseX, mouseY)) {
+                continue;
+            }
+            if (window.content() instanceof MenuWindowContent menuContent) {
+                int slotIndex = menuContent.slotIndexAt((int) mouseX, (int) mouseY, window.contentX(),
+                        window.contentY());
+                if (slotIndex >= 0 && slotIndex < menuContent.screenMenu().slots.size()) {
+                    net.minecraft.world.item.ItemStack stack = menuContent.screenMenu().getSlot(slotIndex).getItem();
+                    return stack.isEmpty() ? null : stack;
+                }
+            }
+            return null;
+        }
+        return null;
+    }
+
     /** @return true when the given point belongs to the HUI UI (window, tab bar or context menu). */
     public boolean isOverHuiUi(double mouseX, double mouseY) {
         if (this.menu != null || inTabBar(mouseY)) {
