@@ -1139,6 +1139,13 @@ public final class HuiDesktopScreen extends Screen {
         HuiMod.LOGGER.info("[HUI] desktop restored after external screen, windows={}", this.windows.size());
     }
 
+    /** Activates the active window's menu on the server, so clicks/JEI transfers are routed to it. */
+    public void activateActiveContent() {
+        if (this.activeContent != null && this.activeContent.serverBacked()) {
+            this.activeContent.activate();
+        }
+    }
+
     /** @return the menu of the active server backed window (e.g. the machine the player is interacting with). */
     public @Nullable net.minecraft.world.inventory.AbstractContainerMenu activeServerMenu() {
         if (this.activeContent != null && this.activeContent.serverBacked()) {

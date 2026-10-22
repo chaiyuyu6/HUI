@@ -71,6 +71,8 @@ public final class HuiJeiPlugin implements IModPlugin {
                 AbstractContainerScreen<?> proxy = menu == null ? null : createProxyScreen(menu);
                 HuiMod.LOGGER.info("[HUI] JEI recipes gui: proxy screen={}", proxy);
                 if (proxy != null) {
+                    // Make the machine menu the server side active menu, otherwise the transfer clicks are rejected.
+                    desktop.activateActiveContent();
                     desktop.prepareExternalScreen();
                     setParentScreen(recipesGui, proxy);
                     this.transferDesktop = desktop;
