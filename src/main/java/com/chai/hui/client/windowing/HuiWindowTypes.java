@@ -72,12 +72,13 @@ public final class HuiWindowTypes {
             if (player.hasInfiniteMaterials()) {
                 return notAvailableHere();
             }
-            if (com.chai.hui.HuiConfig.nativeUi()) {
-                return new VanillaMenuUiContent(player.inventoryMenu,
-                        Component.translatable("hui.window.default_inventory"),
-                        slot -> slot.container instanceof net.minecraft.world.entity.player.Inventory, null);
-            }
-            return EmbeddedScreenContent.croppedInventory(player);
+            // Default inventory: 4 armor slots on top, 27 storage slots and the hotbar, in a compact HUI layout.
+            return new VanillaMenuUiContent(player.inventoryMenu,
+                    Component.translatable("hui.window.default_inventory"),
+                    slot -> slot instanceof net.minecraft.world.inventory.ArmorSlot
+                            || (slot.container instanceof net.minecraft.world.entity.player.Inventory
+                                    && slot.getContainerSlot() < 36),
+                    null, HuiWindowTypes::defaultInventorySlotPosition, 178, 118);
         }));
         register(WindowType.translatable(DEMO, "hui.window.demo", () -> {
             com.chai.hui.client.windowing.ui.PanelWidget root = com.chai.hui.client.windowing.ui.Ui.column()
@@ -117,6 +118,19 @@ public final class HuiWindowTypes {
     public static Identifier inventoryTypeForCurrentGameMode() {
         Player player = Minecraft.getInstance().player;
         return player != null && player.hasInfiniteMaterials() ? CREATIVE : INVENTORY;
+    }
+
+    /** Compact layout for the default inventory window: armor row, 27 storage slots, hotbar. */
+    private static int[] defaultInventorySlotPosition(net.minecraft.world.inventory.Slot slot) {
+        int containerSlot = slot.getContainerSlot();
+        if (slot instanceof net.minecraft.world.inventory.ArmorSlot) {
+            return new int[] {8 + (containerSlot - 36) * 18, 8};
+        }
+        if (containerSlot < 9) {
+            return new int[] {8 + containerSlot * 18, 94};
+        }
+        int index = containerSlot - 9;
+        return new int[] {8 + (index % 9) * 18, 34 + (index / 9) * 18};
     }
 
     private static WindowContent unavailable() {

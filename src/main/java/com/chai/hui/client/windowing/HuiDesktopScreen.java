@@ -143,6 +143,7 @@ public final class HuiDesktopScreen extends Screen {
         content.init(this.width, this.height);
         this.windows.add(window);
         this.blockUiWindows.put(pos, window);
+        pairMachineWithInventory(window);
         bringToFront(window);
     }
 
@@ -171,9 +172,21 @@ public final class HuiDesktopScreen extends Screen {
             this.pendingBlockUiTitle = null;
             this.pendingBlockUiContent = null;
         }
+        ensureMachineCompanions();
         clampAllWindows();
         for (HuiWindow window : this.windows) {
             window.content().init(this.width, this.height);
+        }
+    }
+
+    /** Makes sure every machine window on the page is paired with the inventory companion. */
+    private void ensureMachineCompanions() {
+        for (HuiWindow window : new ArrayList<>(this.windows)) {
+            boolean machine = window.typeId().equals(HuiWindowTypes.BLOCK_ENTITY)
+                    || window.typeId().equals(Identifier.fromNamespaceAndPath("hui", "block_ui"));
+            if (machine && findInventoryWindow() == null) {
+                pairMachineWithInventory(window);
+            }
         }
     }
 
@@ -217,7 +230,7 @@ public final class HuiDesktopScreen extends Screen {
             restored.setContent(content);
             restored.setTitle(screen.getTitle());
             clamp(restored);
-            ensureInventoryCompanion();
+            pairMachineWithInventory(restored);
             // Do not steal focus from a window the player just opened (restored containers arrive a bit later).
             if (this.focused == null) {
                 bringToFront(restored);
@@ -228,12 +241,22 @@ public final class HuiDesktopScreen extends Screen {
                 content);
         window.setEphemeral(true);
 
+        this.windows.add(window);
+        pairMachineWithInventory(window);
+        bringToFront(window);
+    }
+
+    /**
+     * Every machine window opened through HUI is paired with the cropped default inventory window, so items can be moved
+     * between the machine and the player without the machine window showing the player inventory itself. In creative
+     * mode the creative inventory window takes that place (the default inventory window is survival only).
+     */
+    private void pairMachineWithInventory(HuiWindow machine) {
         Identifier desiredInventory = this.minecraft != null && this.minecraft.player != null
                 && this.minecraft.player.hasInfiniteMaterials() ? HuiWindowTypes.CREATIVE
                         : HuiWindowTypes.DEFAULT_INVENTORY;
         HuiWindow companion = findInventoryWindow();
         if (companion != null && !companion.typeId().equals(desiredInventory)) {
-            // Block entity windows always pair with the default (cropped) inventory, not the full survival screen.
             closeWindow(companion);
             companion = null;
         }
@@ -241,35 +264,34 @@ public final class HuiDesktopScreen extends Screen {
         if (companion == null) {
             companion = addWindow(desiredInventory);
         }
+        if (companion == null) {
+            machine.setPosition((this.width - machine.width()) / 2, (this.height - machine.height()) / 2);
+            clamp(machine);
+            return;
+        }
 
         int gap = 8;
         int top = TAB_TOP + TAB_HEIGHT + 4;
-        if (companion != null) {
-            if (createdCompanion) {
-                int totalWidth = window.width() + gap + companion.width();
-                int startX = Math.max(4, (this.width - totalWidth) / 2);
-                int y = Math.max(top, (this.height - Math.max(window.height(), companion.height())) / 2);
-                companion.setPosition(startX + window.width() + gap, y);
-                window.setPosition(startX, y);
-            } else {
-                int x = companion.x() - window.width() - gap;
-                int y = companion.y();
-                if (x < 4) {
-                    x = companion.x() + companion.width() + gap;
-                    if (x + window.width() > this.width - 4) {
-                        x = Math.max(4, (this.width - window.width()) / 2);
-                        y = Math.max(TAB_TOP + TAB_HEIGHT + 4, companion.y() - window.height() - gap);
-                    }
-                }
-                window.setPosition(x, y);
-            }
+        if (createdCompanion) {
+            int totalWidth = machine.width() + gap + companion.width();
+            int startX = Math.max(4, (this.width - totalWidth) / 2);
+            int y = Math.max(top, (this.height - Math.max(machine.height(), companion.height())) / 2);
+            companion.setPosition(startX + machine.width() + gap, y);
+            machine.setPosition(startX, y);
         } else {
-            window.setPosition((this.width - window.width()) / 2, (this.height - window.height()) / 2);
+            int x = companion.x() - machine.width() - gap;
+            int y = companion.y();
+            if (x < 4) {
+                x = companion.x() + companion.width() + gap;
+                if (x + machine.width() > this.width - 4) {
+                    x = Math.max(4, (this.width - machine.width()) / 2);
+                    y = Math.max(top, companion.y() - machine.height() - gap);
+                }
+            }
+            machine.setPosition(x, y);
         }
         clamp(companion);
-        clamp(window);
-        this.windows.add(window);
-        bringToFront(window);
+        clamp(machine);
     }
 
     private void ensureInventoryCompanion() {

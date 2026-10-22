@@ -44,6 +44,7 @@ public final class VanillaMenuUiContent implements MenuWindowContent {
     private final int width;
     private final int height;
     private final @Nullable BlockPos sourcePos;
+    private final @Nullable java.util.function.Function<Slot, int[]> layoutOverride;
 
     // Vanilla AbstractContainerScreen click state machine.
     private @Nullable Slot lastClickSlot;
@@ -62,9 +63,20 @@ public final class VanillaMenuUiContent implements MenuWindowContent {
 
     public VanillaMenuUiContent(AbstractContainerMenu menu, Component title, Predicate<Slot> slotFilter,
             @Nullable BlockPos sourcePos) {
+        this(menu, title, slotFilter, sourcePos, null, -1, -1);
+    }
+
+    /**
+     * Variant with a custom slot layout: {@code layoutOverride} returns the panel relative [x, y] of a slot, which lets
+     * the default inventory window show the armor slots in a HUI style layout instead of the vanilla screen positions.
+     */
+    public VanillaMenuUiContent(AbstractContainerMenu menu, Component title, Predicate<Slot> slotFilter,
+            @Nullable BlockPos sourcePos, @Nullable java.util.function.Function<Slot, int[]> layoutOverride,
+            int fixedWidth, int fixedHeight) {
         this.menu = menu;
         this.title = title;
         this.sourcePos = sourcePos;
+        this.layoutOverride = layoutOverride;
         int minSlotX = Integer.MAX_VALUE;
         int minSlotY = Integer.MAX_VALUE;
         int maxSlotX = Integer.MIN_VALUE;
@@ -96,8 +108,8 @@ public final class VanillaMenuUiContent implements MenuWindowContent {
         }
         this.minX = minSlotX;
         this.minY = minSlotY;
-        this.width = (maxSlotX - minSlotX) + SLOT_SIZE + PADDING * 2;
-        this.height = (maxSlotY - minSlotY) + SLOT_SIZE + PADDING * 2;
+        this.width = fixedWidth > 0 ? fixedWidth : (maxSlotX - minSlotX) + SLOT_SIZE + PADDING * 2;
+        this.height = fixedHeight > 0 ? fixedHeight : (maxSlotY - minSlotY) + SLOT_SIZE + PADDING * 2;
     }
 
     // --- WindowContent ---------------------------------------------------------------------
@@ -144,10 +156,16 @@ public final class VanillaMenuUiContent implements MenuWindowContent {
     // --- Layout ----------------------------------------------------------------------------
 
     private int slotX(Slot slot) {
+        if (this.layoutOverride != null) {
+            return this.originX + this.layoutOverride.apply(slot)[0];
+        }
         return this.originX + PADDING + (slot.x - this.minX);
     }
 
     private int slotY(Slot slot) {
+        if (this.layoutOverride != null) {
+            return this.originY + this.layoutOverride.apply(slot)[1];
+        }
         return this.originY + PADDING + (slot.y - this.minY);
     }
 
