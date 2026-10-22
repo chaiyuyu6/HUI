@@ -95,6 +95,11 @@ public final class CreativeWindowContent implements MenuWindowContent {
     }
 
     @Override
+    public boolean paintsTitleBar() {
+        return false;
+    }
+
+    @Override
     public int preferredWidth() {
         return IMAGE_WIDTH + PADDING * 2;
     }
@@ -440,5 +445,15 @@ public final class CreativeWindowContent implements MenuWindowContent {
         if (this.searchBox != null) {
             this.searchBox.setFocused(false);
         }
+        // The creative menu is a real server menu: close it so the next open can request a new one and the server does
+        // not keep a dangling containerMenu.
+        net.neoforged.neoforge.client.network.ClientPacketDistributor
+                .sendToServer(new com.chai.hui.network.CloseMenuPayload(this.menu.containerId));
+        Minecraft minecraft = Minecraft.getInstance();
+        if (minecraft.player != null && minecraft.player.containerMenu == this.menu) {
+            minecraft.player.containerMenu = minecraft.player.inventoryMenu;
+        }
+        CreativeOpeningContent.markOpened();
+        CreativeOpeningContent.reset();
     }
 }

@@ -704,8 +704,10 @@ public final class HuiDesktopScreen extends Screen {
         if (window.content().paintsBodyBackground()) {
             graphics.fill(x, y, x + width, y + height, WINDOW_BODY);
         }
-        graphics.fill(x + 1, y + 1, x + width - 1, y + HuiWindow.TITLE_HEIGHT,
-                isFocused ? WINDOW_HEADER_FOCUSED : WINDOW_HEADER);
+        if (window.content().paintsTitleBar()) {
+            graphics.fill(x + 1, y + 1, x + width - 1, y + HuiWindow.TITLE_HEIGHT,
+                    isFocused ? WINDOW_HEADER_FOCUSED : WINDOW_HEADER);
+        }
         graphics.outline(x, y, width, height, isFocused ? BORDER_FOCUSED : BORDER);
         Component title = window.pinned()
                 ? Component.translatable("hui.window.title_pinned", window.title())

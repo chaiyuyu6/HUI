@@ -23,6 +23,11 @@ public interface WindowContent {
         return true;
     }
 
+    /** Whether the desktop paints the window header bar (the title text is always drawn). */
+    default boolean paintsTitleBar() {
+        return true;
+    }
+
     /** Called with the desktop size, e.g. to lay out an embedded screen that expects a full screen size. */
     default void init(int screenWidth, int screenHeight) {}
 
