@@ -47,10 +47,7 @@ public final class HuiWindowTypes {
             if (player.hasInfiniteMaterials()) {
                 return notAvailableHere();
             }
-            if (com.chai.hui.HuiConfig.nativeUi()) {
-                return new VanillaMenuUiContent(player.inventoryMenu,
-                        Component.translatable("hui.window.inventory"), slot -> true, null);
-            }
+            // Vanilla InventoryScreen inside a HUI window: player preview, crafting, armor and all vanilla widgets.
             return EmbeddedScreenContent.survival(player);
         }));
         register(WindowType.translatable(CREATIVE, "hui.window.creative_inventory", () -> {

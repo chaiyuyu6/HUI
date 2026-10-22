@@ -220,10 +220,9 @@ public final class HuiDesktopScreen extends Screen {
                     menuFactory.build(new com.chai.hui.client.ui.MenuUiContext(menu, screen.getTitle(),
                             () -> com.chai.hui.client.ui.MenuUiContext.activateMenu(menu))));
         } else {
-            content = com.chai.hui.HuiConfig.nativeUi()
-                    ? new VanillaMenuUiContent(screen.getMenu(), screen.getTitle(),
-                            slot -> !(slot.container instanceof net.minecraft.world.entity.player.Inventory), sourcePos)
-                    : EmbeddedScreenContent.blockEntity(screen, sourcePos);
+            // Reuse the vanilla container screen: its custom widgets (furnace arrows, stone cutter candidates,
+            // cartography preview, enchanting table, brewing bubbles, slot hints) are drawn by vanilla code.
+            content = EmbeddedScreenContent.blockEntity(screen, sourcePos);
         }
         HuiWindow restored = sourcePos == null ? null : this.pendingRestores.remove(sourcePos);
         if (restored != null) {
@@ -748,7 +747,7 @@ public final class HuiDesktopScreen extends Screen {
             }
             bringToFront(window);
             this.overlayContent = window.content();
-            if (rightClick) {
+            if (rightClick && window.isInTitleBar(mouseX, mouseY)) {
                 openWindowMenu(window, mouseX, mouseY);
                 return true;
             }
@@ -929,8 +928,13 @@ public final class HuiDesktopScreen extends Screen {
             return true;
         }
         HuiWindow window = this.focused;
-        if (window != null && !window.minimized()) {
-            return window.content().keyPressed(event);
+        if (window != null && !window.minimized() && window.content().keyPressed(event)) {
+            return true;
+        }
+        if (this.minecraft != null
+                && this.minecraft.options.keyInventory.isActiveAndMatches(InputConstants.getKey(event))) {
+            this.onClose();
+            return true;
         }
         return false;
     }

@@ -11,10 +11,6 @@ import net.neoforged.neoforge.common.ModConfigSpec;
 public final class HuiConfig {
     private static final ModConfigSpec.Builder BUILDER = new ModConfigSpec.Builder();
 
-    /** @return true when windows should use HUI's own container UI (the vanilla screen is then only a data source). */
-    public static boolean nativeUi() {
-        return SPEC.isLoaded() ? WINDOWING_NATIVE_UI.get() : true;
-    }
 
     public static final ModConfigSpec.BooleanValue ENABLED = BUILDER
             .comment("Shows the HUI information panel on the HUD.",
@@ -67,11 +63,6 @@ public final class HuiConfig {
             .define("hud.showTime", true);
 
     /** The built config spec, registered by {@link HuiMod}. Must stay the last static field of this class. */
-    /** Render container/inventory windows with HUI's own UI instead of embedding the vanilla screen. */
-    public static final ModConfigSpec.BooleanValue WINDOWING_NATIVE_UI = BUILDER
-            .comment("Use HUI's own UI for container and inventory windows (false = embed the vanilla screen)")
-            .define("windowing.nativeUi", true);
-
     public static final ModConfigSpec SPEC = BUILDER.build();
 
     private static final int DEFAULT_ACCENT = 0xFF3FC7FF;
