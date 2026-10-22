@@ -69,9 +69,6 @@ public final class HuiWindowTypes {
             if (player == null) {
                 return unavailable();
             }
-            if (player.hasInfiniteMaterials()) {
-                return notAvailableHere();
-            }
             // Default inventory: 4 armor slots on top, 27 storage slots and the hotbar, in a compact HUI layout.
             return new VanillaMenuUiContent(player.inventoryMenu,
                     Component.translatable("hui.window.default_inventory"),

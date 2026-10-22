@@ -149,9 +149,7 @@ public final class HuiClient {
             return;
         }
         if (event.getNewScreen() instanceof net.minecraft.client.gui.screens.inventory.CreativeModeInventoryScreen) {
-            // The vanilla creative picker is a client only menu (and getType() throws for it); the HUI desktop opens
-            // its server side creative menu instead.
-            event.setNewScreen(HuiDesktopScreen.openWithInventory());
+            // The creative inventory is not part of HUI mode: it stays the vanilla screen.
             return;
         }
         if (event.getNewScreen() instanceof AbstractContainerScreen<?> container) {

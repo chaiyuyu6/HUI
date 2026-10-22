@@ -252,9 +252,8 @@ public final class HuiDesktopScreen extends Screen {
      * mode the creative inventory window takes that place (the default inventory window is survival only).
      */
     private void pairMachineWithInventory(HuiWindow machine) {
-        Identifier desiredInventory = this.minecraft != null && this.minecraft.player != null
-                && this.minecraft.player.hasInfiniteMaterials() ? HuiWindowTypes.CREATIVE
-                        : HuiWindowTypes.DEFAULT_INVENTORY;
+        // Machine windows always pair with the cropped default inventory window, in survival and creative alike.
+        Identifier desiredInventory = HuiWindowTypes.DEFAULT_INVENTORY;
         HuiWindow companion = findInventoryWindow();
         if (companion != null && !companion.typeId().equals(desiredInventory)) {
             closeWindow(companion);
@@ -295,9 +294,7 @@ public final class HuiDesktopScreen extends Screen {
     }
 
     private void ensureInventoryCompanion() {
-        Identifier desired = this.minecraft != null && this.minecraft.player != null
-                && this.minecraft.player.hasInfiniteMaterials() ? HuiWindowTypes.CREATIVE
-                        : HuiWindowTypes.DEFAULT_INVENTORY;
+        Identifier desired = HuiWindowTypes.DEFAULT_INVENTORY;
         HuiWindow current = findInventoryWindow();
         if (current != null && current.typeId().equals(desired)) {
             return;
