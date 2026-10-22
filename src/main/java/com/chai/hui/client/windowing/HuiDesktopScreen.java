@@ -1253,6 +1253,32 @@ public final class HuiDesktopScreen extends Screen {
         return null;
     }
 
+    /** @return the server backed menu contents of the windows, machine windows first (recipe transfer targets). */
+    public java.util.List<MenuWindowContent> serverMenuContents() {
+        java.util.List<MenuWindowContent> result = new java.util.ArrayList<>();
+        for (HuiWindow window : this.windows) {
+            if (!window.minimized() && window.content() instanceof MenuWindowContent content
+                    && content.serverBacked()
+                    && !HuiWindowTypes.isInventoryType(window.typeId())) {
+                result.add(content);
+            }
+        }
+        for (HuiWindow window : this.windows) {
+            if (!window.minimized() && window.content() instanceof MenuWindowContent content
+                    && content.serverBacked()
+                    && HuiWindowTypes.isInventoryType(window.typeId())) {
+                result.add(content);
+            }
+        }
+        return result;
+    }
+
+    /** Makes the given window content the active menu (used to route a recipe transfer). */
+    public void activateMenuContent(MenuWindowContent content) {
+        this.activeContent = content;
+        content.activate();
+    }
+
     /** @return the item under the last known mouse position (used when JEI opens its recipes GUI). */
     public @Nullable net.minecraft.world.item.ItemStack hoveredItem() {
         return itemAt(this.lastMouseX, this.lastMouseY);

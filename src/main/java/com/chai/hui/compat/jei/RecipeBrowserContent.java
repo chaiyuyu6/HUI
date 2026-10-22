@@ -211,76 +211,97 @@ public final class RecipeBrowserContent implements com.chai.hui.client.windowing
         if (!(Minecraft.getInstance().gui.screen() instanceof com.chai.hui.client.windowing.HuiDesktopScreen desktop)) {
             return false;
         }
-        AbstractContainerMenu menu = desktop.activeServerMenu();
-        if (menu == null) {
-            return false;
+        for (com.chai.hui.client.windowing.MenuWindowContent content : desktop.serverMenuContents()) {
+            if (transferHandler(content.screenMenu(), tab.category()).isPresent()) {
+                return true;
+            }
         }
-        try {
-            return this.runtime.getRecipeTransferManager().getRecipeTransferHandler(menu, tab.category()).isPresent();
-        } catch (RuntimeException exception) {
-            return false;
-        }
+        return false;
     }
 
     private int pendingTab = -1;
     private int pendingCard = -1;
     private int pendingTicks;
+    private int pendingMenuId = -1;
 
     private void transfer(Tab tab, Card card) {
-        if (!(Minecraft.getInstance().gui.screen() instanceof com.chai.hui.client.windowing.HuiDesktopScreen desktop)
-                || Minecraft.getInstance().player == null) {
+        var minecraft = Minecraft.getInstance();
+        if (!(minecraft.gui.screen() instanceof com.chai.hui.client.windowing.HuiDesktopScreen desktop)
+                || minecraft.player == null) {
             return;
         }
-        AbstractContainerMenu menu = desktop.activeServerMenu();
-        if (menu == null) {
+        com.chai.hui.client.windowing.MenuWindowContent chosen = null;
+        AbstractContainerMenu menu = null;
+        for (com.chai.hui.client.windowing.MenuWindowContent content : desktop.serverMenuContents()) {
+            AbstractContainerMenu candidate = content.screenMenu();
+            if (transferHandler(candidate, tab.category()).isPresent()) {
+                chosen = content;
+                menu = candidate;
+                break;
+            }
+        }
+        if (menu == null || chosen == null) {
+            com.chai.hui.HuiMod.LOGGER.info("no HUI window menu accepts this recipe transfer");
             return;
         }
-        desktop.activateActiveContent();
-        if (Minecraft.getInstance().player.containerMenu != menu) {
-            // The server activates the menu asynchronously: wait a few ticks for the container switch.
-            this.pendingTab = this.tabs.indexOf(tab);
-            this.pendingCard = tab.cards().indexOf(card);
-            this.pendingTicks = 40;
-            com.chai.hui.HuiMod.LOGGER.info("[HUI] recipe transfer waiting for the menu activation");
-            return;
+        desktop.activateMenuContent(chosen);
+        this.pendingTab = this.tabs.indexOf(tab);
+        this.pendingCard = tab.cards().indexOf(card);
+        this.pendingMenuId = menu.containerId;
+        this.pendingTicks = 40;
+        if (minecraft.player.containerMenu == menu) {
+            this.pendingTicks = 0;
+            executeTransfer(tab, card, menu);
+        } else {
+            com.chai.hui.HuiMod.LOGGER.info("recipe transfer waiting for menu " + menu.containerId);
         }
-        executeTransfer(tab, card, menu);
+    }
+
+    @SuppressWarnings({"rawtypes", "unchecked"})
+    private Optional<IRecipeTransferHandler<AbstractContainerMenu, Object>> transferHandler(AbstractContainerMenu menu,
+            IRecipeCategory<?> category) {
+        try {
+            return this.runtime.getRecipeTransferManager().getRecipeTransferHandler(menu, (IRecipeCategory) category);
+        } catch (RuntimeException exception) {
+            return Optional.empty();
+        }
     }
 
     private void executePendingTransfer() {
         if (this.pendingTicks <= 0 || this.pendingTab < 0) {
             return;
         }
-        if (!(Minecraft.getInstance().gui.screen() instanceof com.chai.hui.client.windowing.HuiDesktopScreen desktop)
-                || Minecraft.getInstance().player == null) {
+        var minecraft = Minecraft.getInstance();
+        if (!(minecraft.gui.screen() instanceof com.chai.hui.client.windowing.HuiDesktopScreen desktop)
+                || minecraft.player == null) {
             this.pendingTicks = 0;
             return;
         }
-        AbstractContainerMenu menu = desktop.activeServerMenu();
-        if (menu != null && Minecraft.getInstance().player.containerMenu == menu) {
-            Tab tab = this.tabs.get(this.pendingTab);
-            executeTransfer(tab, tab.cards().get(this.pendingCard), menu);
-            this.pendingTicks = 0;
-            return;
+        if (minecraft.player.containerMenu.containerId == this.pendingMenuId) {
+            for (com.chai.hui.client.windowing.MenuWindowContent content : desktop.serverMenuContents()) {
+                if (content.menuContainerId() == this.pendingMenuId) {
+                    Tab tab = this.tabs.get(this.pendingTab);
+                    executeTransfer(tab, tab.cards().get(this.pendingCard), content.screenMenu());
+                    this.pendingTicks = 0;
+                    return;
+                }
+            }
         }
         this.pendingTicks--;
     }
 
     @SuppressWarnings({"rawtypes", "unchecked"})
     private void executeTransfer(Tab tab, Card card, AbstractContainerMenu menu) {
-        Optional<IRecipeTransferHandler<AbstractContainerMenu, Object>> handler = this.runtime
-                .getRecipeTransferManager()
-                .getRecipeTransferHandler(menu, (IRecipeCategory) tab.category());
+        Optional<IRecipeTransferHandler<AbstractContainerMenu, Object>> handler = transferHandler(menu, tab.category());
         if (handler.isEmpty()) {
-            com.chai.hui.HuiMod.LOGGER.info("[HUI] no recipe transfer handler for this menu");
+            com.chai.hui.HuiMod.LOGGER.info("no recipe transfer handler for this menu");
             return;
         }
         IRecipeSlotsView slots = card.drawable().getRecipeSlotsView();
         Object error = handler.get().transferRecipe(menu, card.recipe(), slots, Minecraft.getInstance().player, false,
                 true);
-        com.chai.hui.HuiMod.LOGGER.info("[HUI] recipe transfer result: {}", error);
+        com.chai.hui.HuiMod.LOGGER.info("recipe transfer result: " + error);
     }
-
     private void toggleBookmark() {
         if (this.typedFocus == null) {
             return;
