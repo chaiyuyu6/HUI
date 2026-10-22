@@ -66,9 +66,7 @@ public final class CreativeWindowContent implements MenuWindowContent {
         this.menu = menu;
         this.tabs = new ArrayList<>();
         for (CreativeModeTab tab : CreativeModeTabRegistry.getSortedCreativeModeTabs()) {
-            if (tab.hasAnyItems()) {
-                this.tabs.add(tab);
-            }
+            this.tabs.add(tab);
         }
         for (int start = 0; start < this.tabs.size(); start += 10) {
             this.pages.add(new CreativeTabsScreenPage(this.tabs.subList(start, Math.min(start + 10, this.tabs.size()))));
@@ -90,6 +88,11 @@ public final class CreativeWindowContent implements MenuWindowContent {
     }
 
     // --- MenuWindowContent -------------------------------------------------------------------
+
+    @Override
+    public boolean paintsBodyBackground() {
+        return false;
+    }
 
     @Override
     public int preferredWidth() {
@@ -212,6 +215,17 @@ public final class CreativeWindowContent implements MenuWindowContent {
         }
     }
 
+    @Override
+    public void extractOverlay(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick, int originX,
+            int originY) {
+        ItemStack carried = this.menu.getCarried();
+        if (!carried.isEmpty()) {
+            graphics.nextStratum();
+            graphics.item(carried, mouseX - 8, mouseY - 8);
+            graphics.itemDecorations(Minecraft.getInstance().font, carried, mouseX - 8, mouseY - 8);
+        }
+    }
+
     private void drawPageButton(GuiGraphicsExtractor graphics, Font font, int x, int y, String label, boolean enabled) {
         graphics.fill(x, y, x + 20, y + 20, 0xFF10161C);
         graphics.outline(x, y, 20, 20, enabled ? 0xFF3FC7FF : 0xFF2F4353);
@@ -324,8 +338,9 @@ public final class CreativeWindowContent implements MenuWindowContent {
         }
 
         // Search box.
-        if (selectedTab().hasSearchBar() && localX >= 82 && localX < 162 && localY >= 6 && localY < 15) {
-            this.searchBox.onClick(event, doubleClick);
+        if (this.searchBox != null && selectedTab().hasSearchBar() && localX >= 82 && localX < 162 && localY >= 6
+                && localY < 15) {
+            this.searchBox.onClick(new MouseButtonEvent(localX, localY, event.buttonInfo()), doubleClick);
             return true;
         }
 
@@ -341,6 +356,8 @@ public final class CreativeWindowContent implements MenuWindowContent {
         if (slotIndex < 0) {
             return false;
         }
+        com.chai.hui.HuiMod.LOGGER.info("[HUI] creative slot click slot={} menu={}", slotIndex,
+                this.menu.containerId);
         activate();
         int button = event.button() == 1 ? 1 : 0;
         ContainerInput input = event.hasShiftDown() ? ContainerInput.QUICK_MOVE : ContainerInput.PICKUP;

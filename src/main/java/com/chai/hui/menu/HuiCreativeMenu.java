@@ -64,7 +64,7 @@ public final class HuiCreativeMenu extends AbstractContainerMenu {
         }
         CreativeModeTab tab = tabs.get(this.tabIndex);
         List<ItemStack> items = new java.util.ArrayList<>();
-        if (this.search.isBlank()) {
+        if (this.search.isBlank() && tab.getType() != CreativeModeTab.Type.SEARCH) {
             items.addAll(tab.getDisplayItems());
         } else {
             String needle = this.search.toLowerCase(java.util.Locale.ROOT);
@@ -92,11 +92,7 @@ public final class HuiCreativeMenu extends AbstractContainerMenu {
 
     private static List<CreativeModeTab> sortedTabs() {
         List<CreativeModeTab> tabs = new java.util.ArrayList<>();
-        for (CreativeModeTab tab : net.neoforged.neoforge.common.CreativeModeTabRegistry.getSortedCreativeModeTabs()) {
-            if (tab.hasAnyItems()) {
-                tabs.add(tab);
-            }
-        }
+        tabs.addAll(net.neoforged.neoforge.common.CreativeModeTabRegistry.getSortedCreativeModeTabs());
         return tabs;
     }
 

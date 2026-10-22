@@ -18,6 +18,11 @@ public interface WindowContent {
     /** Preferred content height in GUI pixels. */
     int preferredHeight();
 
+    /** Whether the desktop paints its window body background behind this content. */
+    default boolean paintsBodyBackground() {
+        return true;
+    }
+
     /** Called with the desktop size, e.g. to lay out an embedded screen that expects a full screen size. */
     default void init(int screenWidth, int screenHeight) {}
 
