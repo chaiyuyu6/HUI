@@ -20,6 +20,10 @@ import net.minecraft.resources.Identifier;
 public final class HuiJeiPlugin implements IModPlugin {
     private static final Identifier UID = Identifier.fromNamespaceAndPath(HuiMod.MOD_ID, "jei_plugin");
 
+    public HuiJeiPlugin() {
+        HuiMod.LOGGER.info("[HUI] JEI plugin constructed");
+    }
+
     @Override
     public Identifier getPluginUid() {
         return UID;
@@ -27,7 +31,11 @@ public final class HuiJeiPlugin implements IModPlugin {
 
     @Override
     public void registerGuiHandlers(IGuiHandlerRegistration registration) {
-        registration.addGuiScreenHandler(HuiDesktopScreen.class, screen -> new DesktopGuiProperties(screen));
+        HuiMod.LOGGER.info("[HUI] JEI plugin registering the desktop screen handler");
+        registration.addGuiScreenHandler(HuiDesktopScreen.class, screen -> {
+            HuiMod.LOGGER.info("[HUI] JEI desktop gui properties requested");
+            return new DesktopGuiProperties(screen);
+        });
     }
 
     /** The whole desktop is treated as the JEI gui area. */
