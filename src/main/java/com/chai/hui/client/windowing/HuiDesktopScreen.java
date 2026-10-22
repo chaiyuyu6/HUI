@@ -257,9 +257,10 @@ public final class HuiDesktopScreen extends Screen {
             return;
         }
         HuiWindow existingInventory = findInventoryWindow();
-        if (existingInventory != null && existingInventory.pinned()) {
-            // The pinned inventory window stays on this desktop page; the machine gets its own page (and its own
-            // default inventory companion).
+        if (existingInventory != null && existingInventory.pinned()
+                && !existingInventory.typeId().equals(HuiWindowTypes.DEFAULT_INVENTORY)) {
+            // Only a pinned inventory of a different kind needs its own page: the machine then gets a new desktop page
+            // (and its own default inventory companion) while the pinned window stays where it is.
             addPage();
         }
         HuiWindow window = new HuiWindow(UUID.randomUUID().toString(), HuiWindowTypes.BLOCK_ENTITY, screen.getTitle(),
@@ -518,11 +519,18 @@ public final class HuiDesktopScreen extends Screen {
      * new desktop page is created first, so the existing inventory window stays on the previous page.
      */
     private void openInventoryWindow(Identifier type) {
-        for (HuiWindow window : this.windows) {
-            if (HuiWindowTypes.isInventoryType(window.typeId())) {
-                addPage();
-                break;
+        for (HuiWindow window : new ArrayList<>(this.windows)) {
+            if (!HuiWindowTypes.isInventoryType(window.typeId())) {
+                continue;
             }
+            if (window.typeId().equals(type)) {
+                // Same inventory kind: reuse the window that is already on this page.
+                bringToFront(window);
+                return;
+            }
+            // A different inventory kind: give it its own desktop page.
+            addPage();
+            break;
         }
         addWindow(type);
     }
