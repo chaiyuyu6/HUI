@@ -7,6 +7,12 @@ import net.minecraft.world.inventory.AbstractContainerMenu;
 import net.minecraft.world.inventory.AbstractFurnaceMenu;
 import net.minecraft.world.inventory.BrewingStandMenu;
 import net.minecraft.world.inventory.InventoryMenu;
+import net.minecraft.world.inventory.StonecutterMenu;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.crafting.SelectableRecipe;
+import net.minecraft.world.item.crafting.StonecutterRecipe;
+import net.minecraft.world.item.crafting.display.SlotDisplay;
+import net.minecraft.world.item.crafting.display.SlotDisplayContext;
 import org.jetbrains.annotations.Nullable;
 
 /**
@@ -23,16 +29,44 @@ public final class MachineDecorations {
         int[] get(int slotIndex);
     }
 
-    @FunctionalInterface
     public interface Renderer {
         void render(GuiGraphicsExtractor graphics, AbstractContainerMenu menu, SlotPosition slotPosition, int mouseX,
                 int mouseY, float partialTick);
+
+        /** Optional: handle a click on a decoration; return true when the click was consumed. */
+        default boolean mouseClicked(net.minecraft.client.input.MouseButtonEvent event, AbstractContainerMenu menu,
+                SlotPosition slotPosition) {
+            return false;
+        }
     }
 
     private static final int ACCENT = 0xFF3FC7FF;
     private static final int ACCENT_GLOW = 0xFF7FD9FF;
     private static final int FUEL = 0xFFFFB74D;
     private static final int FUEL_GLOW = 0xFFFFD180;
+
+    // ===== 可调参数（想微调动画/候选列表的位置就改这里） =====
+    /** 熔炉火焰相对燃料槽的 inset（像素）。 */
+    private static final int FURNACE_FLAME_INSET = 2;
+    /** 烧炼进度条离输入槽右边的距离。 */
+    private static final int FURNACE_BAR_LEFT_GAP = 21;
+    /** 烧炼进度条离产出槽左边的距离。 */
+    private static final int FURNACE_BAR_RIGHT_GAP = 3;
+    /** 烧炼进度条相对产出槽中心的 Y 偏移。 */
+    private static final int FURNACE_BAR_Y_OFFSET = 7;
+    /** 酿造燃料条相对燃料槽的 inset。 */
+    private static final int BREW_FUEL_INSET_X = 3;
+    private static final int BREW_FUEL_INSET_Y = 12;
+    /** 酿造进度条相对材料槽右边缘的偏移。 */
+    private static final int BREW_BAR_OFFSET_X = 22;
+    private static final int BREW_BAR_OFFSET_Y = -2;
+    /** 切石机候选格：相对输入槽的偏移、格子尺寸与可见数量。 */
+    private static final int STONECUTTER_GRID_OFFSET_X = 24;
+    private static final int STONECUTTER_GRID_OFFSET_Y = 0;
+    private static final int STONECUTTER_CELL_W = 16;
+    private static final int STONECUTTER_CELL_H = 18;
+    private static final int STONECUTTER_COLUMNS = 4;
+    private static final int STONECUTTER_VISIBLE = 12;
 
     private MachineDecorations() {
     }
@@ -45,6 +79,21 @@ public final class MachineDecorations {
         if (menu instanceof BrewingStandMenu brewing) {
             return (graphics, ignored, slotPosition, mouseX, mouseY, partialTick) -> renderBrewing(graphics, brewing,
                     slotPosition);
+        }
+        if (menu instanceof StonecutterMenu stonecutter) {
+            return new Renderer() {
+                @Override
+                public void render(GuiGraphicsExtractor graphics, AbstractContainerMenu ignored, SlotPosition slotPosition,
+                        int mouseX, int mouseY, float partialTick) {
+                    renderStonecutter(graphics, stonecutter, slotPosition, mouseX, mouseY);
+                }
+
+                @Override
+                public boolean mouseClicked(net.minecraft.client.input.MouseButtonEvent event,
+                        AbstractContainerMenu ignored, SlotPosition slotPosition) {
+                    return clickStonecutter(event, stonecutter, slotPosition);
+                }
+            };
         }
         if (menu instanceof InventoryMenu) {
             return MachineDecorations::renderPlayerPreview;
@@ -151,6 +200,79 @@ public final class MachineDecorations {
                 graphics.fill(dotX, dotY, dotX + 2, dotY + 2, withAlpha(ACCENT_GLOW, 0.25F + 0.6F * (1 - offset)));
             }
         }
+    }
+
+    /** Layout used by the stone cutter window: input on the left, result on the right, candidate grid in between. */
+    public static int[] stonecutterSlotPosition(net.minecraft.world.inventory.Slot slot) {
+        if (slot.index == StonecutterMenu.INPUT_SLOT) {
+            return new int[] {8, 8};
+        }
+        if (slot.index == StonecutterMenu.RESULT_SLOT) {
+            return new int[] {160, 8};
+        }
+        return new int[] {8, 8};
+    }
+
+    private static int[] stonecutterGridBase(SlotPosition slotPosition) {
+        int[] input = slotPosition.get(StonecutterMenu.INPUT_SLOT);
+        return new int[] {input[0] + STONECUTTER_GRID_OFFSET_X, input[1] + STONECUTTER_GRID_OFFSET_Y};
+    }
+
+    private static void renderStonecutter(GuiGraphicsExtractor graphics, StonecutterMenu menu,
+            SlotPosition slotPosition, int mouseX, int mouseY) {
+        if (!menu.hasInputItem()) {
+            return;
+        }
+        var recipes = menu.getVisibleRecipes();
+        int count = menu.getNumberOfVisibleRecipes();
+        if (count <= 0) {
+            return;
+        }
+        var context = SlotDisplayContext.fromLevel(Minecraft.getInstance().level);
+        int selected = menu.getSelectedRecipeIndex();
+        int[] base = stonecutterGridBase(slotPosition);
+        int visible = Math.min(STONECUTTER_VISIBLE, count);
+        for (int index = 0; index < visible; index++) {
+            int x = base[0] + (index % STONECUTTER_COLUMNS) * STONECUTTER_CELL_W;
+            int y = base[1] + (index / STONECUTTER_COLUMNS) * STONECUTTER_CELL_H;
+            boolean hover = mouseX >= x && mouseX < x + STONECUTTER_CELL_W && mouseY >= y
+                    && mouseY < y + STONECUTTER_CELL_H;
+            graphics.fill(x, y, x + STONECUTTER_CELL_W, y + STONECUTTER_CELL_H,
+                    hover ? 0x553FC7FF : 0x22000000);
+            graphics.outline(x, y, STONECUTTER_CELL_W, STONECUTTER_CELL_H,
+                    index == selected ? ACCENT_GLOW : 0x33FFFFFF);
+            SlotDisplay display = recipes.entries().get(index).recipe().optionDisplay();
+            ItemStack stack = display.resolveForFirstStack(context);
+            if (!stack.isEmpty()) {
+                graphics.item(stack, x, y + 1);
+                graphics.itemDecorations(Minecraft.getInstance().font, stack, x, y + 1);
+                if (hover) {
+                    graphics.setTooltipForNextFrame(Minecraft.getInstance().font, stack, mouseX, mouseY);
+                }
+            }
+        }
+    }
+
+    private static boolean clickStonecutter(net.minecraft.client.input.MouseButtonEvent event, StonecutterMenu menu,
+            SlotPosition slotPosition) {
+        Minecraft minecraft = Minecraft.getInstance();
+        if (minecraft.player == null || !menu.hasInputItem()) {
+            return false;
+        }
+        int count = Math.min(STONECUTTER_VISIBLE, menu.getNumberOfVisibleRecipes());
+        int[] base = stonecutterGridBase(slotPosition);
+        for (int index = 0; index < count; index++) {
+            int x = base[0] + (index % STONECUTTER_COLUMNS) * STONECUTTER_CELL_W;
+            int y = base[1] + (index / STONECUTTER_COLUMNS) * STONECUTTER_CELL_H;
+            if (event.x() >= x && event.x() < x + STONECUTTER_CELL_W && event.y() >= y
+                    && event.y() < y + STONECUTTER_CELL_H) {
+                if (menu.clickMenuButton(minecraft.player, index)) {
+                    minecraft.gameMode.handleInventoryButtonClick(menu.containerId, index);
+                    return true;
+                }
+            }
+        }
+        return false;
     }
 
     private static void renderPlayerPreview(GuiGraphicsExtractor graphics, AbstractContainerMenu menu,

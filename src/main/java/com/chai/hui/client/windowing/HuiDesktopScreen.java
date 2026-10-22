@@ -220,10 +220,19 @@ public final class HuiDesktopScreen extends Screen {
                     menuFactory.build(new com.chai.hui.client.ui.MenuUiContext(menu, screen.getTitle(),
                             () -> com.chai.hui.client.ui.MenuUiContext.activateMenu(menu))));
         } else {
-            // HUI style slots plus HUI re-implementations of the vanilla widgets (furnace flame/arrow, brewing bubbles...).
-            content = new VanillaMenuUiContent(screen.getMenu(), screen.getTitle(),
-                    slot -> !(slot.container instanceof net.minecraft.world.entity.player.Inventory), sourcePos)
-                    .withDecoration(MachineDecorations.forMenu(screen.getMenu()));
+            // HUI style slots plus HUI re-implementations of the vanilla widgets (furnace flame/arrow, brewing
+            // bubbles, stone cutter candidates, ...).
+            net.minecraft.world.inventory.AbstractContainerMenu menu = screen.getMenu();
+            if (menu instanceof net.minecraft.world.inventory.StonecutterMenu) {
+                content = new VanillaMenuUiContent(menu, screen.getTitle(),
+                        slot -> !(slot.container instanceof net.minecraft.world.entity.player.Inventory), sourcePos,
+                        MachineDecorations::stonecutterSlotPosition, 186, 78)
+                        .withDecoration(MachineDecorations.forMenu(menu));
+            } else {
+                content = new VanillaMenuUiContent(menu, screen.getTitle(),
+                        slot -> !(slot.container instanceof net.minecraft.world.entity.player.Inventory), sourcePos)
+                        .withDecoration(MachineDecorations.forMenu(menu));
+            }
         }
         HuiWindow restored = sourcePos == null ? null : this.pendingRestores.remove(sourcePos);
         if (restored != null) {

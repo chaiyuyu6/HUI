@@ -318,6 +318,10 @@ public final class VanillaMenuUiContent implements MenuWindowContent {
         }
         this.originX = originX;
         this.originY = originY;
+        if (this.decoration != null && this.decoration.mouseClicked(event, this.menu,
+                index -> new int[] {slotX(this.menu.getSlot(index)), slotY(this.menu.getSlot(index))})) {
+            return true;
+        }
         InputConstants.Key mouseKey = InputConstants.Type.MOUSE.getOrCreate(event.button());
         boolean cloning = minecraft.options.keyPickItem.isActiveAndMatches(mouseKey)
                 && minecraft.player.hasInfiniteMaterials();
