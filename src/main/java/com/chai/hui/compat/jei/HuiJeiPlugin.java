@@ -84,6 +84,7 @@ public final class HuiJeiPlugin implements IModPlugin {
                 && event.getCurrentScreen() instanceof mezz.jei.gui.recipes.RecipesGui) {
             // JEI closed: return to the HUI desktop instead of showing the throwaway vanilla screen.
             HuiMod.LOGGER.info("[HUI] JEI closed, returning to the HUI desktop");
+            this.transferDesktop.restoreAfterExternalScreen();
             event.setNewScreen(this.transferDesktop);
             this.transferProxy = null;
             this.transferDesktop = null;

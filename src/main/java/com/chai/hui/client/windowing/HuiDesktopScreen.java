@@ -1117,6 +1117,22 @@ public final class HuiDesktopScreen extends Screen {
         this.preserveOnExternalScreen = true;
     }
 
+    /**
+     * Restores the desktop windows (from the saved page layout) when the desktop is shown again after an external
+     * screen such as JEI replaced it.
+     */
+    public void restoreAfterExternalScreen() {
+        if (!this.windows.isEmpty()) {
+            return;
+        }
+        rebuildActivePage();
+        clampAllWindows();
+        for (HuiWindow window : this.windows) {
+            window.content().init(this.width, this.height);
+        }
+        HuiMod.LOGGER.info("[HUI] desktop restored after external screen, windows={}", this.windows.size());
+    }
+
     /** @return the menu of the active server backed window (e.g. the machine the player is interacting with). */
     public @Nullable net.minecraft.world.inventory.AbstractContainerMenu activeServerMenu() {
         if (this.activeContent != null && this.activeContent.serverBacked()) {
