@@ -47,15 +47,6 @@ public final class CreativeOpeningContent implements WindowContent {
     }
 
     @Override
-    public void tick() {
-        this.ticks++;
-        if (this.ticks > 0 && this.ticks % 40 == 0) {
-            // The menu open packet may have been missed (e.g. another menu was closed in the same tick): retry.
-            ClientPacketDistributor.sendToServer(new OpenCreativePayload());
-        }
-    }
-
-    @Override
     public void extract(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick, int originX,
             int originY) {
         Font font = Minecraft.getInstance().font;

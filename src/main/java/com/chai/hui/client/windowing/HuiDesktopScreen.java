@@ -72,6 +72,8 @@ public final class HuiDesktopScreen extends Screen {
     private @Nullable Component pendingBlockUiTitle;
     private @Nullable WindowContent pendingBlockUiContent;
     private @Nullable WindowContent pendingInventoryContent;
+    private boolean preserveWindowsOnReinit;
+    private boolean reinitKeepWindows;
     private final java.util.Map<net.minecraft.core.BlockPos, HuiWindow> pendingRestores = new java.util.HashMap<>();
     private @Nullable MenuWindowContent activeContent;
     private @Nullable WindowContent overlayContent;
@@ -108,15 +110,27 @@ public final class HuiDesktopScreen extends Screen {
 
     /** Swaps the inventory window content (e.g. creative placeholder -> server menu content). */
     public void replaceCreativeContent(WindowContent content) {
+        this.preserveWindowsOnReinit = true;
         Component title = Component.translatable("hui.window.creative_inventory");
-        for (HuiWindow window : this.windows) {
-            if (HuiWindowTypes.isInventoryType(window.typeId())) {
-                window.setContent(content);
-                window.setTitle(title);
-                content.init(this.width, this.height);
-                bringToFront(window);
-                return;
+        HuiWindow target = null;
+        for (HuiWindow window : new ArrayList<>(this.windows)) {
+            boolean placeholder = window.content() instanceof CreativeOpeningContent;
+            if (HuiWindowTypes.isInventoryType(window.typeId()) || placeholder) {
+                if (target == null) {
+                    target = window;
+                } else if (placeholder) {
+                    // Drop leftover placeholders so they cannot keep requesting the menu.
+                    closeWindow(window);
+                }
             }
+        }
+        if (target != null) {
+            target.setContent(content);
+            target.setTitle(title);
+            content.init(this.width, this.height);
+            bringToFront(target);
+            com.chai.hui.HuiMod.LOGGER.info("[HUI] creative content swapped into window {}", target.uid());
+            return;
         }
         HuiWindow window = new HuiWindow(UUID.randomUUID().toString(), HuiWindowTypes.CREATIVE, title, content);
         window.setPosition((this.width - window.width()) / 2, (this.height - window.height()) / 2);
@@ -124,6 +138,7 @@ public final class HuiDesktopScreen extends Screen {
         content.init(this.width, this.height);
         this.windows.add(window);
         bringToFront(window);
+        com.chai.hui.HuiMod.LOGGER.info("[HUI] creative content created new window {}", window.uid());
     }
 
     /** Opens the desktop restoring the pinned windows only (used by the F8 shortcut). */
@@ -177,6 +192,14 @@ public final class HuiDesktopScreen extends Screen {
 
     @Override
     protected void init() {
+        if (this.reinitKeepWindows) {
+            this.reinitKeepWindows = false;
+            clampAllWindows();
+            for (HuiWindow window : this.windows) {
+                window.content().init(this.width, this.height);
+            }
+            return;
+        }
         if (!this.built) {
             this.layout = DesktopLayoutStore.load();
             this.layout.ensurePages();
@@ -1083,6 +1106,11 @@ public final class HuiDesktopScreen extends Screen {
 
     @Override
     public void removed() {
+        if (this.preserveWindowsOnReinit) {
+            this.preserveWindowsOnReinit = false;
+            this.reinitKeepWindows = true;
+            return;
+        }
         if (this.removedOnce) {
             return;
         }
