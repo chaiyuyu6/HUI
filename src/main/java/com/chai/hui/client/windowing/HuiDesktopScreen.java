@@ -67,6 +67,10 @@ public final class HuiDesktopScreen extends Screen {
     private @Nullable ContextMenu menu;
     private @Nullable AbstractContainerScreen<?> pendingContainerScreen;
     private @Nullable net.minecraft.core.BlockPos pendingContainerPos;
+    private final java.util.Map<net.minecraft.core.BlockPos, HuiWindow> blockUiWindows = new java.util.HashMap<>();
+    private @Nullable net.minecraft.core.BlockPos pendingBlockUiPos;
+    private @Nullable Component pendingBlockUiTitle;
+    private @Nullable WindowContent pendingBlockUiContent;
     private final java.util.Map<net.minecraft.core.BlockPos, HuiWindow> pendingRestores = new java.util.HashMap<>();
     private @Nullable MenuWindowContent activeContent;
 
@@ -104,6 +108,42 @@ public final class HuiDesktopScreen extends Screen {
         this.pendingContainerPos = pos;
     }
 
+    /** Opens the desktop hosting a HUI block UI window (registered block entity without a vanilla GUI). */
+    public static HuiDesktopScreen openWithBlockUi(net.minecraft.core.BlockPos pos, Component title,
+            WindowContent content) {
+        HuiDesktopScreen desktop = new HuiDesktopScreen(null);
+        desktop.pendingBlockUiPos = pos;
+        desktop.pendingBlockUiTitle = title;
+        desktop.pendingBlockUiContent = content;
+        return desktop;
+    }
+
+    /**
+     * Adds (or refreshes) the HUI window for a registered block entity. Windows created through the block UI channel are
+     * ephemeral: they live as long as the desktop and are not restored from the layout file.
+     */
+    public void addBlockUiWindow(net.minecraft.core.BlockPos pos, Component title, WindowContent content) {
+        HuiWindow existing = this.blockUiWindows.get(pos);
+        if (existing != null) {
+            existing.setTitle(title);
+            existing.setContent(content);
+            content.init(this.width, this.height);
+            bringToFront(existing);
+            return;
+        }
+        HuiWindow window = new HuiWindow(UUID.randomUUID().toString(),
+                Identifier.fromNamespaceAndPath("hui", "block_ui"), title, content);
+        window.setEphemeral(true);
+        int cascade = this.blockUiWindows.size() % 6;
+        window.setPosition(Math.max(0, (this.width - window.width()) / 2 - 60 + cascade * 18),
+                Math.max(TAB_HEIGHT + 8, (this.height - window.height()) / 2 - 40 + cascade * 18));
+        clamp(window);
+        content.init(this.width, this.height);
+        this.windows.add(window);
+        this.blockUiWindows.put(pos, window);
+        bringToFront(window);
+    }
+
     // --- Layout loading / page building ----------------------------------------------------
 
     @Override
@@ -122,6 +162,12 @@ public final class HuiDesktopScreen extends Screen {
             this.pendingContainerScreen = null;
             this.pendingContainerPos = null;
         }
+        if (this.pendingBlockUiContent != null && this.pendingBlockUiPos != null && this.pendingBlockUiTitle != null) {
+            addBlockUiWindow(this.pendingBlockUiPos, this.pendingBlockUiTitle, this.pendingBlockUiContent);
+            this.pendingBlockUiPos = null;
+            this.pendingBlockUiTitle = null;
+            this.pendingBlockUiContent = null;
+        }
         clampAllWindows();
         for (HuiWindow window : this.windows) {
             window.content().init(this.width, this.height);
@@ -135,10 +181,34 @@ public final class HuiDesktopScreen extends Screen {
      */
     private void adoptContainerWindow(AbstractContainerScreen<?> screen,
             @Nullable net.minecraft.core.BlockPos sourcePos) {
-        WindowContent content = com.chai.hui.HuiConfig.nativeUi()
-                ? new VanillaMenuUiContent(screen.getMenu(), screen.getTitle(),
-                        slot -> !(slot.container instanceof net.minecraft.world.entity.player.Inventory), sourcePos)
-                : EmbeddedScreenContent.blockEntity(screen, sourcePos);
+        if (sourcePos != null && this.minecraft != null && this.minecraft.level != null) {
+            net.minecraft.world.level.block.entity.BlockEntity blockEntity = this.minecraft.level
+                    .getBlockEntity(sourcePos);
+            if (blockEntity != null && com.chai.hui.client.ui.HuiUiRegistry.isBlockRegistered(blockEntity.getType())) {
+                // Registered block entity: HUI owns the UI. The vanilla menu is closed and the block UI channel provides
+                // the data for the registered HUI UI.
+                ClientPacketDistributor.sendToServer(new CloseMenuPayload(screen.getMenu().containerId));
+                if (this.minecraft.player != null) {
+                    this.minecraft.player.containerMenu = this.minecraft.player.inventoryMenu;
+                }
+                ClientPacketDistributor.sendToServer(new com.chai.hui.network.OpenBlockUiPayload(sourcePos));
+                return;
+            }
+        }
+        WindowContent content;
+        com.chai.hui.client.ui.HuiUiRegistry.MenuUiFactory menuFactory =
+                com.chai.hui.client.ui.HuiUiRegistry.menuUi(screen.getMenu().getType());
+        if (menuFactory != null) {
+            net.minecraft.world.inventory.AbstractContainerMenu menu = screen.getMenu();
+            content = new com.chai.hui.client.ui.framework.UiWindowContent(
+                    menuFactory.build(new com.chai.hui.client.ui.MenuUiContext(menu, screen.getTitle(),
+                            () -> com.chai.hui.client.ui.MenuUiContext.activateMenu(menu))));
+        } else {
+            content = com.chai.hui.HuiConfig.nativeUi()
+                    ? new VanillaMenuUiContent(screen.getMenu(), screen.getTitle(),
+                            slot -> !(slot.container instanceof net.minecraft.world.entity.player.Inventory), sourcePos)
+                    : EmbeddedScreenContent.blockEntity(screen, sourcePos);
+        }
         HuiWindow restored = sourcePos == null ? null : this.pendingRestores.remove(sourcePos);
         if (restored != null) {
             restored.setContent(content);

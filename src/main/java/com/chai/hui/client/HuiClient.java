@@ -57,6 +57,7 @@ public final class HuiClient {
         // desktop's right-click menu and is stored per save).
         NeoForge.EVENT_BUS.addListener(this::onScreenOpening);
         NeoForge.EVENT_BUS.addListener(this::onLoggingOut);
+        com.chai.hui.client.network.HuiBlockUiClient.registerHooks();
 
         // Lets the "Config" button in the Mods menu open the HUI settings screen.
         modContainer.registerExtensionPoint(IConfigScreenFactory.class,
@@ -146,7 +147,11 @@ public final class HuiClient {
             return;
         }
         if (event.getNewScreen() instanceof AbstractContainerScreen<?> container) {
-            // Direct block interaction (chest, brewing stand, anvil, ...) in HUI mode: open it as a HUI window too.
+            // Covered menus (vanilla container GUIs + registered mod menus) become HUI windows; unregistered modded
+            // menus keep their vanilla screen.
+            if (!com.chai.hui.client.ui.HuiUiRegistry.isMenuCovered(container.getMenu().getType())) {
+                return;
+            }
             event.setNewScreen(HuiDesktopScreen.openWithContainer(container, null));
         }
     }

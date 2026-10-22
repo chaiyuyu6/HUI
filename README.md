@@ -264,3 +264,21 @@ All Rights Reserved（可在 `gradle.properties` 的 `mod_license` 中修改）�
 - 配置项 `windowing.nativeUi`（默认 true）：设 false 可回退到旧的「嵌入原版界面」方案。
 - 创造物品栏窗口暂时仍使用嵌入原版界面（页签/搜索尚未转义，属于设计文档阶段 B）。
 - GUI 贴图可选：把 `window/frame.png`、`slot.png` 等放进 `assets/hui/textures/gui/sprites/` 即自动生效，缺失时回退纯色。
+
+## HUI UI 框架 / 注册通道
+
+HUI 现在是一个"网页式" UI 框架，并把方块实体 + GUI 的注册通道开放给其它模组：
+
+- 框架：`UiNode`（节点）/ `UiStyle`（flex 布局、颜色、边框、滚动）/ `UiAnimation`（平移、缩放、旋转、透明度，
+  缓动 + loop/pingpong）/ `UiWindowContent`（布局、渲染、悬停、点击、滚轮、键盘）；控件：面板、行列、文本、
+  按钮、图片、滚动容器、输入框。
+- 其它模组注册通道：
+  - 菜单 UI：`HuiUiRegistry.registerMenu(MenuType, ctx -> UiNode)`（菜单数据仍走原版同步，点击走
+    `ContainerInput`）；
+  - 方块实体 UI：`HuiUiRegistry.registerBlockEntity(BlockEntityType, ctx -> UiNode)`（客户端）+
+    `HuiBlockUiServer.register(BlockEntityType, Provider)`（服务端数据/动作）。没有原版 GUI 的方块实体也会被 HUI
+    接管，通过 `OpenBlockUiPayload / BlockUiDataPayload / BlockUiActionPayload` 同步数据。
+- 回退规则：已注册（含原版容器菜单、已注册方块实体）→ HUI 界面；未注册的模组菜单/方块实体 → 原版界面；
+  无法转义的界面可用 `HuiWindowApi.openFullscreen` 全屏兜底。
+- 文档：`docs/ui-framework-design.md`（框架 + API 示例）、`docs/vanilla-ui-research.md`、
+  `docs/ui-adapter-design.md`、`docs/gui-texture-spec.md`。

@@ -3,8 +3,12 @@ package com.chai.hui.network;
 import java.util.OptionalInt;
 
 import com.chai.hui.HuiMod;
+import com.chai.hui.server.HuiBlockUiServer;
 import com.chai.hui.server.HuiMenuManager;
 import net.minecraft.core.BlockPos;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.resources.Identifier;
+import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
@@ -34,6 +38,12 @@ public final class HuiNetwork {
         registrar.playToServer(CloseMenuPayload.TYPE, CloseMenuPayload.STREAM_CODEC, HuiNetwork::handleCloseMenu);
         registrar.playToServer(CreativeInsertPayload.TYPE, CreativeInsertPayload.STREAM_CODEC,
                 HuiNetwork::handleCreativeInsert);
+        registrar.playToServer(OpenBlockUiPayload.TYPE, OpenBlockUiPayload.STREAM_CODEC,
+                HuiNetwork::handleOpenBlockUi);
+        registrar.playToServer(BlockUiActionPayload.TYPE, BlockUiActionPayload.STREAM_CODEC,
+                HuiNetwork::handleBlockUiAction);
+        registrar.playToClient(BlockUiDataPayload.TYPE, BlockUiDataPayload.STREAM_CODEC,
+                com.chai.hui.client.network.HuiBlockUiClient::handleData);
         registrar.playToClient(CloseMenuClientPayload.TYPE, CloseMenuClientPayload.STREAM_CODEC,
                 com.chai.hui.client.network.HuiClientPayloads::onMenuClosed);
         registrar.playToClient(OpenBlockEntityResultPayload.TYPE, OpenBlockEntityResultPayload.STREAM_CODEC,
@@ -131,6 +141,65 @@ public final class HuiNetwork {
             slot.set(payload.stack().copy());
             player.containerMenu = menu;
             menu.broadcastFullState();
+        });
+    }
+
+    private static void handleOpenBlockUi(OpenBlockUiPayload payload, IPayloadContext context) {
+        context.enqueueWork(() -> {
+            if (!(context.player() instanceof ServerPlayer player)) {
+                return;
+            }
+            ServerLevel level = player.level();
+            BlockPos pos = payload.pos();
+            if (!level.isLoaded(pos)) {
+                return;
+            }
+            BlockEntity blockEntity = level.getBlockEntity(pos);
+            if (blockEntity == null) {
+                return;
+            }
+            Identifier typeId = HuiBlockUiServer.typeId(blockEntity);
+            if (typeId == null) {
+                return;
+            }
+            HuiBlockUiServer.Provider provider = HuiBlockUiServer.provider(typeId);
+            if (provider == null) {
+                return;
+            }
+            if (player.distanceToSqr(pos.getX() + 0.5D, pos.getY() + 0.5D, pos.getZ() + 0.5D) > 64.0D) {
+                return;
+            }
+            CompoundTag data = provider.writeData(player, blockEntity);
+            PacketDistributor.sendToPlayer(player, new BlockUiDataPayload(pos, typeId, data));
+        });
+    }
+
+    private static void handleBlockUiAction(BlockUiActionPayload payload, IPayloadContext context) {
+        context.enqueueWork(() -> {
+            if (!(context.player() instanceof ServerPlayer player)) {
+                return;
+            }
+            ServerLevel level = player.level();
+            BlockPos pos = payload.pos();
+            if (!level.isLoaded(pos) || player.distanceToSqr(pos.getX() + 0.5D, pos.getY() + 0.5D,
+                    pos.getZ() + 0.5D) > 64.0D) {
+                return;
+            }
+            BlockEntity blockEntity = level.getBlockEntity(pos);
+            if (blockEntity == null) {
+                return;
+            }
+            Identifier typeId = HuiBlockUiServer.typeId(blockEntity);
+            if (typeId == null) {
+                return;
+            }
+            HuiBlockUiServer.Provider provider = HuiBlockUiServer.provider(typeId);
+            if (provider == null) {
+                return;
+            }
+            provider.onAction(player, blockEntity, payload.action(), payload.payload());
+            PacketDistributor.sendToPlayer(player, new BlockUiDataPayload(pos, typeId,
+                    provider.writeData(player, blockEntity)));
         });
     }
 
