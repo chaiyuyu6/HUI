@@ -185,6 +185,16 @@ public final class HuiClient {
                 pos = com.chai.hui.client.HuiPendingBlockPos.poll();
             }
             if (pos != null) {
+                boolean covered;
+                try {
+                    covered = com.chai.hui.client.ui.HuiUiRegistry.isMenuCovered(container.getMenu().getType());
+                } catch (UnsupportedOperationException exception) {
+                    covered = false;
+                }
+                if (!covered) {
+                    // No HUI UI registered for this container: stay out of the way and use the normal screen.
+                    return;
+                }
                 if (event.getCurrentScreen() instanceof HuiDesktopScreen desktop) {
                     desktop.queueContainerWindow(container, pos);
                     event.setNewScreen(desktop);
