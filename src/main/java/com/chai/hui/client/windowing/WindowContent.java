@@ -28,6 +28,16 @@ public interface WindowContent {
         return true;
     }
 
+    /** Whether the desktop paints the window border (outline). Return false for a borderless window. */
+    default boolean paintsBorder() {
+        return true;
+    }
+
+    /** Whether the desktop paints the window title text. Return false for a borderless window. */
+    default boolean paintsTitleText() {
+        return true;
+    }
+
     /** Called with the desktop size, e.g. to lay out an embedded screen that expects a full screen size. */
     default void init(int screenWidth, int screenHeight) {}
 

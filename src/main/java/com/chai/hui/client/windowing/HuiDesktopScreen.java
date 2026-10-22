@@ -955,11 +955,15 @@ public final class HuiDesktopScreen extends Screen {
             graphics.fill(x + 1, y + 1, x + width - 1, y + HuiWindow.TITLE_HEIGHT,
                     isFocused ? WINDOW_HEADER_FOCUSED : WINDOW_HEADER);
         }
-        graphics.outline(x, y, width, height, isFocused ? BORDER_FOCUSED : BORDER);
-        Component title = window.pinned()
-                ? Component.translatable("hui.window.title_pinned", window.title())
-                : window.title();
-        graphics.text(this.font, title, x + 5, y + (HuiWindow.TITLE_HEIGHT - 8) / 2, TITLE_COLOR, true);
+        if (window.content().paintsBorder()) {
+            graphics.outline(x, y, width, height, isFocused ? BORDER_FOCUSED : BORDER);
+        }
+        if (window.content().paintsTitleText()) {
+            Component title = window.pinned()
+                    ? Component.translatable("hui.window.title_pinned", window.title())
+                    : window.title();
+            graphics.text(this.font, title, x + 5, y + (HuiWindow.TITLE_HEIGHT - 8) / 2, TITLE_COLOR, true);
+        }
 
         window.content().extract(graphics, mouseX, mouseY, partialTick, window.contentX(), window.contentY());
     }
