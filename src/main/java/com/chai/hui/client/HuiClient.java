@@ -55,12 +55,7 @@ public final class HuiClient {
         NeoForge.EVENT_BUS.addListener(RenderGuiEvent.Post.class, HudLayoutManager.get()::onGuiPost);
         // HUI inventory mode: replace the vanilla player inventory screen with the windowed desktop (toggle lives in the
         // desktop's right-click menu and is stored per save).
-        NeoForge.EVENT_BUS.addListener(EventPriority.LOWEST, ScreenEvent.Render.Foreground.class, event -> {
-            if (event.getScreen() instanceof HuiDesktopScreen desktop) {
-                desktop.renderDesktopAboveExternalOverlays(event.getGuiGraphics(), event.getMouseX(),
-                        event.getMouseY(), event.getPartialTick());
-            }
-        });
+
         NeoForge.EVENT_BUS.addListener(this::onScreenOpening);
         NeoForge.EVENT_BUS.addListener(this::onLoggingOut);
         com.chai.hui.client.network.HuiBlockUiClient.registerHooks();
@@ -95,7 +90,57 @@ public final class HuiClient {
         event.register(HuiKeyMappings.OPEN_DESKTOP);
     }
 
+    private static boolean desktopOverlayListenerRegistered;
+
+    /**
+     * Registers the desktop foreground renderer lazily: JEI registers its own foreground overlay during its runtime
+     * startup, and listeners with the same priority run in registration order. Registering after JEI means HUI windows
+     * are drawn after the JEI layers, so JEI stays at the bottom.
+     */
+    private static void ensureDesktopOverlayListener() {
+        if (desktopOverlayListenerRegistered) {
+            return;
+        }
+        desktopOverlayListenerRegistered = true;
+        NeoForge.EVENT_BUS.addListener(EventPriority.LOWEST, ScreenEvent.Render.Foreground.class, event -> {
+            if (event.getScreen() instanceof HuiDesktopScreen desktop) {
+                desktop.renderDesktopAboveExternalOverlays(event.getGuiGraphics(), event.getMouseX(),
+                        event.getMouseY(), event.getPartialTick());
+            }
+        });
+        NeoForge.EVENT_BUS.addListener(EventPriority.HIGHEST, ScreenEvent.MouseButtonPressed.Pre.class, event -> {
+            if (event.getScreen() instanceof HuiDesktopScreen desktop
+                    && desktop.isOverHuiUi(event.getMouseX(), event.getMouseY())
+                    && desktop.mouseClicked(event.getMouseButtonEvent(), event.isDoubleClick())) {
+                event.setCanceled(true);
+            }
+        });
+        NeoForge.EVENT_BUS.addListener(EventPriority.HIGHEST, ScreenEvent.MouseButtonReleased.Pre.class, event -> {
+            if (event.getScreen() instanceof HuiDesktopScreen desktop
+                    && desktop.isOverHuiUi(event.getMouseX(), event.getMouseY())
+                    && desktop.mouseReleased(event.getMouseButtonEvent())) {
+                event.setCanceled(true);
+            }
+        });
+        NeoForge.EVENT_BUS.addListener(EventPriority.HIGHEST, ScreenEvent.MouseDragged.Pre.class, event -> {
+            if (event.getScreen() instanceof HuiDesktopScreen desktop
+                    && desktop.isOverHuiUi(event.getMouseX(), event.getMouseY())
+                    && desktop.mouseDragged(event.getMouseButtonEvent(), event.getDragX(), event.getDragY())) {
+                event.setCanceled(true);
+            }
+        });
+        NeoForge.EVENT_BUS.addListener(EventPriority.HIGHEST, ScreenEvent.MouseScrolled.Pre.class, event -> {
+            if (event.getScreen() instanceof HuiDesktopScreen desktop
+                    && desktop.isOverHuiUi(event.getMouseX(), event.getMouseY())
+                    && desktop.mouseScrolled(event.getMouseX(), event.getMouseY(), event.getScrollDeltaX(),
+                            event.getScrollDeltaY())) {
+                event.setCanceled(true);
+            }
+        });
+    }
+
     private void onClientTick(ClientTickEvent.Post event) {
+        ensureDesktopOverlayListener();
         Minecraft minecraft = Minecraft.getInstance();
         HuiRemoteContainers.tick();
 

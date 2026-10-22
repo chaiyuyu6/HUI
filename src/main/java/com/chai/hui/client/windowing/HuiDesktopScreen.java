@@ -1108,6 +1108,19 @@ public final class HuiDesktopScreen extends Screen {
         return null;
     }
 
+    /** @return true when the given point belongs to the HUI UI (window, tab bar or context menu). */
+    public boolean isOverHuiUi(double mouseX, double mouseY) {
+        if (this.menu != null || inTabBar(mouseY)) {
+            return true;
+        }
+        for (HuiWindow window : this.windows) {
+            if (!window.minimized() && window.contains(mouseX, mouseY)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     @Override
     public boolean mouseScrolled(double mouseX, double mouseY, double scrollX, double scrollY) {
         for (int index = this.windows.size() - 1; index >= 0; index--) {
