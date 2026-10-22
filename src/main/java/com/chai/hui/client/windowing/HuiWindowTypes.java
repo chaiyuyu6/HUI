@@ -71,7 +71,8 @@ public final class HuiWindowTypes {
                     Component.translatable("hui.window.default_inventory"),
                     slot -> slot instanceof net.minecraft.world.inventory.ArmorSlot
                             || (slot.container instanceof net.minecraft.world.entity.player.Inventory
-                                    && slot.getContainerSlot() < 36),
+                                    && (slot.getContainerSlot() < 36
+                                            || slot.getContainerSlot() == net.minecraft.world.entity.player.Inventory.SLOT_OFFHAND)),
                     null, HuiWindowTypes::defaultInventorySlotPosition, 178, 118);
         }));
         register(WindowType.translatable(DEMO, "hui.window.demo", () -> {
@@ -122,6 +123,10 @@ public final class HuiWindowTypes {
         }
         if (containerSlot < 9) {
             return new int[] {8 + containerSlot * 18, 94};
+        }
+        if (containerSlot == net.minecraft.world.entity.player.Inventory.SLOT_OFFHAND) {
+            // Offhand slot next to the armor row.
+            return new int[] {8 + 5 * 18, 8};
         }
         int index = containerSlot - 9;
         return new int[] {8 + (index % 9) * 18, 34 + (index / 9) * 18};
