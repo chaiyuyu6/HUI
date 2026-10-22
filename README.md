@@ -282,3 +282,9 @@ HUI 现在是一个"网页式" UI 框架，并把方块实体 + GUI 的注册通
   无法转义的界面可用 `HuiWindowApi.openFullscreen` 全屏兜底。
 - 文档：`docs/ui-framework-design.md`（框架 + API 示例）、`docs/vanilla-ui-research.md`、
   `docs/ui-adapter-design.md`、`docs/gui-texture-spec.md`。
+
+### 创造物品栏（HUI 自绘）
+
+- 创造模式物品栏改为 HUI 框架实现（`HuiCreativeUiContent`）：左侧分类页签（含其它模组注册的页签）、搜索框、
+  9 列物品网格、快捷栏；拿取/放置走原版创造模式 helper，overlay 层绘制手持物品。
+- 页签数据来自 `CreativeModeTabs.allTabs()` / `tab.getDisplayItems()`，所以**别的 mod 在原版注册的页签会自动同步**。

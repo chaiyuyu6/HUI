@@ -135,3 +135,29 @@ HuiBlockUiServer.register(MyBlockEntities.MACHINE.get(), new HuiBlockUiServer.Pr
 - 方块实体通道需要客户端 UI 工厂和服务端 Provider 都注册，只注册一边不会打开窗口；
 - `UiWindowContent` 每帧重新布局（不缓存脏标记），复杂 UI 需要注意节点数量；
 - 动画目前是节点级关键帧，没有 CSS 式 transition/选择器；需要更复杂的动效可扩展 `UiAnimation` 通道。
+
+## 8. 创造物品栏（HUI 自绘，已实现）
+
+`HuiCreativeUiContent` 用框架实现了创造物品栏，不再嵌入原版 `CreativeModeInventoryScreen`：
+
+- **标签页**：遍历 `CreativeModeTabs.allTabs()`（客户端可用），因此**其它模组通过原版
+  `Registries.CREATIVE_MODE_TAB` / NeoForge 注册的页签会自动出现在 HUI 里**，页签名、图标、物品列表都用原版数据；
+- **物品列表**：`tab.getDisplayItems()`（原版同步到客户端的列表），左侧可滚动分类列表 + 右侧 9 列物品网格；
+- **搜索**：输入框跨全部页签按物品名过滤（去重）；
+- **拿取语义**：复刻原版创造物品栏的点击规则（左键拿整组、Shift 整组、右键减一、空手点物品拿取、
+  同物品左键加一/右键减一），物品放在 `player.inventoryMenu` 的 carried 上，overlay 层跟随鼠标绘制；
+- **快捷栏**：底部 9 格显示玩家快捷栏；有 carried 时点击放入（`handleCreativeModeItemAdd` + 服务端
+  `ServerboundSetCreativeModeSlotPacket`），空手点击把物品拿在手上并从快捷栏清掉；
+- **数据同步**：创造物品栏是纯客户端菜单，HUI 直接使用原版创造模式 helper（`handleCreativeModeItemAdd` /
+  `handleCreativeModeItemDrop`），不依赖 `ItemPickerMenu`；关闭窗口时清空 carried，避免幽灵物品。
+
+已实现但可继续完善（阶段 B/C）：
+
+| 未做 | 说明 |
+| --- | --- |
+| 分类页签分页（原版 tab 分两排/翻页） | HUI 用左侧可滚动列表代替，页签多时也能用 |
+| 销毁物品槽 | 原版右下角垃圾桶，HUI 暂用"点空白/右键减一"控制 carried |
+| 页签专属搜索框 | 统一搜索框跨页签过滤 |
+| 页签拖拽排序 | 使用原版注册顺序 |
+
+由用户实测验证（本轮未启动游戏）。

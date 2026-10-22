@@ -25,9 +25,17 @@ public final class UiWindowContent implements WindowContent {
     private int lastMouseX;
     private int lastMouseY;
     private boolean mouseInside;
+    private @Nullable java.util.function.BiConsumer<GuiGraphicsExtractor, int[]> overlay;
+    public boolean lastClickShift;
+    public int lastClickButton;
 
     public UiWindowContent(UiNode root) {
         this.root = root;
+    }
+
+    /** Extra overlay drawing (e.g. the carried stack) after all windows. */
+    public void setOverlay(java.util.function.BiConsumer<GuiGraphicsExtractor, int[]> renderer) {
+        this.overlay = renderer;
     }
 
     public UiNode root() {
@@ -64,6 +72,9 @@ public final class UiWindowContent implements WindowContent {
             int originY) {
         Font font = Minecraft.getInstance().font;
         UiNode hovered = hitTest(mouseX, mouseY);
+        if (this.overlay != null) {
+            this.overlay.accept(graphics, new int[] {mouseX, mouseY});
+        }
         if (hovered != null && hovered.tooltipSupplier != null) {
             String tooltip = hovered.tooltipSupplier.get();
             if (tooltip != null && !tooltip.isBlank()) {
@@ -430,6 +441,8 @@ public final class UiWindowContent implements WindowContent {
     @Override
     public boolean mouseClicked(MouseButtonEvent event, int originX, int originY, boolean doubleClick) {
         UiNode target = hitTest(event.x(), event.y());
+        this.lastClickShift = event.hasShiftDown();
+        this.lastClickButton = event.button();
         if (target == null) {
             return false;
         }

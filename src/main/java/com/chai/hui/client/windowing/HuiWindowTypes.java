@@ -61,7 +61,7 @@ public final class HuiWindowTypes {
             if (!player.hasInfiniteMaterials()) {
                 return notAvailableHere();
             }
-            return EmbeddedScreenContent.creative(player);
+            return com.chai.hui.HuiConfig.nativeUi() ? new HuiCreativeUiContent() : EmbeddedScreenContent.creative(player);
         }));
         register(WindowType.translatable(DEFAULT_INVENTORY, "hui.window.default_inventory", () -> {
             Player player = Minecraft.getInstance().player;

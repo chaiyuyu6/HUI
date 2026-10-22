@@ -73,6 +73,7 @@ public final class HuiDesktopScreen extends Screen {
     private @Nullable WindowContent pendingBlockUiContent;
     private final java.util.Map<net.minecraft.core.BlockPos, HuiWindow> pendingRestores = new java.util.HashMap<>();
     private @Nullable MenuWindowContent activeContent;
+    private @Nullable WindowContent overlayContent;
 
     private HuiDesktopScreen(@Nullable Identifier requestedInventoryType) {
         super(Component.translatable("hui.desktop.title"));
@@ -501,6 +502,9 @@ public final class HuiDesktopScreen extends Screen {
         releaseBlockEntityMenu(window);
         window.content().removed();
         this.windows.remove(window);
+        if (this.overlayContent == window.content()) {
+            this.overlayContent = null;
+        }
         if (this.focused == window) {
             this.focused = this.windows.isEmpty() ? null : this.windows.get(this.windows.size() - 1);
         }
@@ -540,6 +544,7 @@ public final class HuiDesktopScreen extends Screen {
             this.activeContent.screenMenu().setCarried(net.minecraft.world.item.ItemStack.EMPTY);
         }
         this.activeContent = content;
+        this.overlayContent = content;
         content.activate();
     }
 
@@ -622,10 +627,14 @@ public final class HuiDesktopScreen extends Screen {
             this.menu.render(graphics, this.font, mouseX, mouseY);
         }
         // The carried stack and tooltip must be above every window and the context menu.
-        if (this.activeContent != null) {
+        WindowContent overlay = this.overlayContent;
+        if (overlay == null && this.focused != null) {
+            overlay = this.focused.content();
+        }
+        if (overlay != null) {
             for (HuiWindow window : this.windows) {
-                if (!window.minimized() && window.content() == this.activeContent) {
-                    this.activeContent.extractOverlay(graphics, mouseX, mouseY, partialTick, window.contentX(),
+                if (!window.minimized() && window.content() == overlay) {
+                    overlay.extractOverlay(graphics, mouseX, mouseY, partialTick, window.contentX(),
                             window.contentY());
                     break;
                 }
@@ -713,6 +722,7 @@ public final class HuiDesktopScreen extends Screen {
                 continue;
             }
             bringToFront(window);
+            this.overlayContent = window.content();
             if (rightClick) {
                 openWindowMenu(window, mouseX, mouseY);
                 return true;
@@ -752,6 +762,8 @@ public final class HuiDesktopScreen extends Screen {
             if (!window.minimized() && window.contains(mouseX, mouseY)) {
                 if (window.content() instanceof MenuWindowContent embedded) {
                     activateContent(embedded);
+                } else {
+                    this.overlayContent = window.content();
                 }
                 return;
             }
