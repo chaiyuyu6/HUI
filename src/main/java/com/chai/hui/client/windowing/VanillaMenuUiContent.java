@@ -256,6 +256,10 @@ public final class VanillaMenuUiContent implements MenuWindowContent {
                 }
             }
         }
+        if (this.decoration != null) {
+            this.decoration.render(graphics, this.menu, this.originX + PADDING, this.originY + PADDING, this.minX,
+                    this.minY, mouseX, mouseY, partialTick);
+        }
     }
 
     @Override
