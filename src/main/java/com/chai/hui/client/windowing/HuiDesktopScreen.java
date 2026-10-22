@@ -829,6 +829,15 @@ public final class HuiDesktopScreen extends Screen {
     @Override
     public void extractRenderState(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick) {
         super.extractRenderState(graphics, mouseX, mouseY, partialTick);
+    }
+
+    /**
+     * Draws the whole desktop. This runs from the screen foreground event at the lowest priority, i.e. after other mods
+     * (JEI in particular) drew their overlays, so HUI windows always stay above those layers.
+     */
+    public void renderDesktopAboveExternalOverlays(GuiGraphicsExtractor graphics, int mouseX, int mouseY,
+            float partialTick) {
+        graphics.nextStratum();
         for (HuiWindow window : this.windows) {
             if (!window.minimized()) {
                 renderWindow(graphics, window, mouseX, mouseY, partialTick);

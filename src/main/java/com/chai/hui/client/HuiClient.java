@@ -55,6 +55,12 @@ public final class HuiClient {
         NeoForge.EVENT_BUS.addListener(RenderGuiEvent.Post.class, HudLayoutManager.get()::onGuiPost);
         // HUI inventory mode: replace the vanilla player inventory screen with the windowed desktop (toggle lives in the
         // desktop's right-click menu and is stored per save).
+        NeoForge.EVENT_BUS.addListener(EventPriority.LOWEST, ScreenEvent.Render.Foreground.class, event -> {
+            if (event.getScreen() instanceof HuiDesktopScreen desktop) {
+                desktop.renderDesktopAboveExternalOverlays(event.getGuiGraphics(), event.getMouseX(),
+                        event.getMouseY(), event.getPartialTick());
+            }
+        });
         NeoForge.EVENT_BUS.addListener(this::onScreenOpening);
         NeoForge.EVENT_BUS.addListener(this::onLoggingOut);
         com.chai.hui.client.network.HuiBlockUiClient.registerHooks();
